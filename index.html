@@ -50,17 +50,6 @@
         .dropdown-menu { transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out; }
         #suggestion-box, .suggestion-box { max-height: 300px; overflow-y: auto; }
         #rankingModal.hidden { display: none; }
-        
-        /* Estilos para o menu mobile */
-        #mobile-menu {
-            transition: transform 0.3s ease-in-out;
-        }
-        .mobile-menu-closed {
-            transform: translateX(100%);
-        }
-        #menu-overlay {
-            transition: opacity 0.3s ease-in-out;
-        }
     </style>
 </head>
 <body class="bg-black text-gray-200 font-sans">
@@ -93,19 +82,19 @@
 
             <div class="flex items-center space-x-4">
                  <a href="#" class="hidden md:flex items-center space-x-2 text-gray-300 font-medium border border-transparent hover:border-amber-400 hover:text-amber-400 rounded-full px-4 py-2 transition-colors">
-                    <span>Login</span>
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                     <span>Login</span>
+                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                  </a>
                  <!-- Botão Menu Hamburguer (visível em mobile) -->
                  <button id="hamburger-btn" class="md:hidden text-gray-300 hover:text-amber-400">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                  </button>
             </div>
         </nav>
     </header>
     
     <!-- Menu Mobile -->
-    <div id="mobile-menu" class="fixed top-0 right-0 h-full w-72 bg-zinc-900 shadow-lg z-[60] transform mobile-menu-closed p-6">
+    <div id="mobile-menu" class="fixed top-0 right-0 h-full w-72 bg-zinc-900 shadow-lg z-[60] p-6 transition-transform duration-300 ease-in-out translate-x-full">
         <div class="flex justify-between items-center mb-12">
             <span class="text-white font-bold text-xl">Menu</span>
             <button id="close-menu-btn" class="text-gray-400 hover:text-white text-3xl">&times;</button>
@@ -125,14 +114,14 @@
              <a href="#" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><span>Carteiras</span></a>
             
              <div class="absolute bottom-6 left-6 right-6">
-                <a href="#" class="flex items-center justify-center space-x-2 text-gray-300 font-medium border border-zinc-700 hover:border-amber-400 hover:text-amber-400 rounded-full px-4 py-3 transition-colors">
-                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                   <span>Login</span>
-                </a>
+                 <a href="#" class="flex items-center justify-center space-x-2 text-gray-300 font-medium border border-zinc-700 hover:border-amber-400 hover:text-amber-400 rounded-full px-4 py-3 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span>Login</span>
+                 </a>
              </div>
         </nav>
     </div>
-    <div id="menu-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50"></div>
+    <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-0 pointer-events-none z-50 transition-opacity duration-300"></div>
 
 
     <main id="main-container" class="container mx-auto p-6 md:p-8">
@@ -164,7 +153,7 @@
         const apiUrl = 'https://clearview-api-y531.onrender.com';
         
         const iconUp = `<svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>`;
-        const iconDown = `<svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>`;
+        const iconDown = `<svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4 4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>`;
 
         function getLogoHTML(ticker, quoteType, sizeClasses = 'w-10 h-10', extraClasses = 'rounded-full') {
             const placeholderUrl = `https://placehold.co/40x40/18181b/facc15?text=${ticker.charAt(0)}`;
@@ -808,8 +797,9 @@
             const menu = document.getElementById('mobile-menu');
             const overlay = document.getElementById('menu-overlay');
             if (menu && overlay) {
-                menu.classList.remove('mobile-menu-closed');
-                overlay.classList.remove('hidden');
+                menu.classList.remove('translate-x-full');
+                overlay.classList.remove('bg-opacity-0', 'pointer-events-none');
+                overlay.classList.add('bg-opacity-50');
             }
         }
 
@@ -817,8 +807,9 @@
             const menu = document.getElementById('mobile-menu');
             const overlay = document.getElementById('menu-overlay');
             if (menu && overlay) {
-                menu.classList.add('mobile-menu-closed');
-                overlay.classList.add('hidden');
+                menu.classList.add('translate-x-full');
+                overlay.classList.add('bg-opacity-0', 'pointer-events-none');
+                overlay.classList.remove('bg-opacity-50');
             }
         }
         
@@ -833,4 +824,3 @@
     </script>
 </body>
 </html>
-
