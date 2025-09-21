@@ -117,6 +117,8 @@
         let currentChart = null;
         let currentTicker = null;
         let listaAtivosCompleta = [];
+        // ATUALIZAÇÃO: Aponta para a API online na Render
+        const apiUrl = 'https://clearview-api-y531.onrender.com';
         
         const iconUp = `<svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>`;
         const iconDown = `<svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>`;
@@ -346,7 +348,7 @@
         
         async function carregarDadosPaginaInicial() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/homepage/destaques');
+                const response = await fetch(`${apiUrl}/api/homepage/destaques`);
                 if(!response.ok) throw new Error('Falha na resposta da API');
                 const data = await response.json();
                 
@@ -441,7 +443,7 @@
             }
 
             try {
-                const response = await fetch(`http://127.0.0.1:5000/api/pesquisa/${termoBusca}?periodo=${periodo}`);
+                const response = await fetch(`${apiUrl}/api/pesquisa/${termoBusca}?periodo=${periodo}`);
                 const data = await response.json();
                 if (response.ok) {
                     if (data.tipo === 'lista_opcoes') {
@@ -499,7 +501,7 @@
 
         async function carregarListaDeAtivos() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/ativos/lista');
+                const response = await fetch(`${apiUrl}/api/ativos/lista`);
                 listaAtivosCompleta = await response.json();
             } catch (e) {
                 console.error("Não foi possível carregar a lista de ativos para sugestões.");
@@ -516,7 +518,7 @@
             modal.classList.remove('hidden');
             
             try {
-                const response = await fetch(`http://127.0.0.1:5000/api/ranking/${rankingType}`);
+                const response = await fetch(`${apiUrl}/api/ranking/${rankingType}`);
                 const data = await response.json();
                 
                 let contentHTML = '<div class="grid grid-cols-1 gap-3">';
@@ -641,7 +643,7 @@
             resultsDiv.innerHTML = `<div class="flex justify-center items-center p-16"><div class="loader border-4 border-zinc-800 rounded-full w-12 h-12"></div></div>`;
 
             try {
-                const response = await fetch(`http://127.0.0.1:5000/api/comparar/${ticker1}/${ticker2}?periodo=${periodo}`);
+                const response = await fetch(`${apiUrl}/api/comparar/${ticker1}/${ticker2}?periodo=${periodo}`);
                 const data = await response.json();
 
                 if (!response.ok) {
