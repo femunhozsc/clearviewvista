@@ -804,7 +804,6 @@
             });
         }
 
-        // --- LÓGICA DO MENU MOBILE ---
         function abrirMenuMobile() {
             const menu = document.getElementById('mobile-menu');
             const overlay = document.getElementById('menu-overlay');
@@ -827,8 +826,6 @@
             renderizarPaginaInicial();
             carregarListaDeAtivos();
             inicializarModal();
-
-            // Event Listeners do Menu Mobile
             document.getElementById('hamburger-btn')?.addEventListener('click', abrirMenuMobile);
             document.getElementById('close-menu-btn')?.addEventListener('click', fecharMenuMobile);
             document.getElementById('menu-overlay')?.addEventListener('click', fecharMenuMobile);
