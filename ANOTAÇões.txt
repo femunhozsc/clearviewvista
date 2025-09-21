@@ -1,0 +1,1 @@
+arrumar formatação de "variação", no inicio não tem todas as funcionalidades,em etf/fundos ta mostrando muita coisa que não precisa
