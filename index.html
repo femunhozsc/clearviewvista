@@ -191,7 +191,7 @@
                         <button id="heroSearchButton" class="absolute inset-y-0 right-0 flex items-center pr-5 text-gray-400 hover:text-amber-400 transition-colors">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </button>
-                        <div id="suggestion-box" class="absolute hidden w-full mt-2 card-background shadow-lg"></div>
+                        <div id="suggestion-box" class="absolute hidden w-full mt-2 card-background shadow-lg suggestion-box z-20"></div>
                     </div>
                 </div>
                 <div id="homepage-content" class="mt-12">
@@ -201,17 +201,10 @@
             const searchInput = document.getElementById('heroSearchInput');
             const searchButton = document.getElementById('heroSearchButton');
 
-            searchInput.addEventListener('input', (e) => mostrarSugestoes(e.target, document.getElementById('suggestion-box')));
+            searchInput.addEventListener('input', (e) => mostrarSugestoes(e.target, document.getElementById('suggestion-box'), true));
             searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarAtivo(e.target.value); });
             searchButton.addEventListener('click', () => { buscarAtivo(searchInput.value); });
-            document.addEventListener('click', (e) => {
-                const suggestionBox = document.getElementById('suggestion-box');
-                const searchContainer = document.querySelector('.relative.max-w-xl.mx-auto');
-                if (suggestionBox && searchContainer && !searchContainer.contains(e.target)) {
-                    suggestionBox.classList.add('hidden');
-                }
-            });
-
+            
             carregarDadosPaginaInicial();
         }
 
@@ -294,8 +287,8 @@
             const input2 = document.getElementById('comparadorInput2');
             const suggestionBox2 = document.getElementById('suggestion-box-2');
 
-            input1.addEventListener('input', () => mostrarSugestoes(input1, suggestionBox1));
-            input2.addEventListener('input', () => mostrarSugestoes(input2, suggestionBox2));
+            input1.addEventListener('input', () => mostrarSugestoes(input1, suggestionBox1, false));
+            input2.addEventListener('input', () => mostrarSugestoes(input2, suggestionBox2, false));
 
             document.getElementById('compareBtn').addEventListener('click', buscarECompararAtivos);
         }
@@ -350,17 +343,17 @@
 
             mainContainer.innerHTML = `
                 <div class="fade-in-up">
-                    <div class="card-background p-8 mb-8 flex flex-col md:flex-row justify-between md:items-center">
-                        <div class="flex items-center space-x-6">
-                            <div class="block">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-16 h-16 md:w-20 md:h-20', 'rounded-xl')}</div>
-                            <div>
-                                <p class="text-2xl text-amber-400 font-mono mb-1">${ativo.ticker}</p>
-                                <h1 class="text-4xl lg:text-5xl font-extrabold text-white">${ativo.nome}</h1>
+                    <div class="card-background p-6 md:p-8 mb-8 flex flex-col md:flex-row justify-between md:items-center">
+                        <div class="flex items-center space-x-4 min-w-0">
+                            <div class="block flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-16 h-16 md:w-20 md:h-20', 'rounded-xl')}</div>
+                            <div class="min-w-0">
+                                <p class="text-xl md:text-2xl text-amber-400 font-mono mb-1 truncate">${ativo.ticker}</p>
+                                <h1 class="text-2xl md:text-4xl lg:text-5xl font-extrabold text-white truncate" title="${ativo.nome}">${ativo.nome}</h1>
                             </div>
                         </div>
-                        <div class="text-left md:text-right mt-6 md:mt-0">
-                            <p class="text-5xl lg:text-6xl font-bold text-white">${ativo.preco_atual}</p>
-                            <p class="text-2xl font-semibold ${corVariacao} mt-1">${sinalVariacao}${ativo.variacao_dia_pct} (${sinalVariacao}${ativo.variacao_dia_abs})</p>
+                        <div class="text-left md:text-right mt-6 md:mt-0 flex-shrink-0 pl-0 md:pl-4">
+                            <p class="text-4xl md:text-5xl lg:text-6xl font-bold text-white">${ativo.preco_atual}</p>
+                            <p class="text-xl md:text-2xl font-semibold ${corVariacao} mt-1">${sinalVariacao}${ativo.variacao_dia_pct} (${sinalVariacao}${ativo.variacao_dia_abs})</p>
                         </div>
                     </div>
                     ${secoesHTML ? `<div class="card-background p-6 mb-8">${secoesHTML}</div>` : ''}
@@ -495,7 +488,7 @@
             }
         }
         
-        function mostrarSugestoes(inputElement, suggestionBoxElement) {
+        function mostrarSugestoes(inputElement, suggestionBoxElement, searchOnClick = false) {
             const termo = inputElement.value.toLowerCase();
             
             if (termo.length < 1) {
@@ -522,6 +515,9 @@
                     item.addEventListener('click', () => {
                         inputElement.value = item.dataset.ticker;
                         suggestionBoxElement.classList.add('hidden');
+                         if (searchOnClick) {
+                            buscarAtivo(item.dataset.ticker);
+                        }
                     });
                 });
 
@@ -820,7 +816,20 @@
             document.getElementById('hamburger-btn')?.addEventListener('click', abrirMenuMobile);
             document.getElementById('close-menu-btn')?.addEventListener('click', fecharMenuMobile);
             document.getElementById('menu-overlay')?.addEventListener('click', fecharMenuMobile);
+
+            // Listener global para fechar as caixas de sugestão
+            document.addEventListener('click', (e) => {
+                const isSearchInput = e.target.closest('.relative > input');
+                const isSuggestionBox = e.target.closest('.suggestion-box');
+                
+                if (!isSearchInput && !isSuggestionBox) {
+                    document.querySelectorAll('.suggestion-box').forEach(box => {
+                        box.classList.add('hidden');
+                    });
+                }
+            });
         });
     </script>
 </body>
 </html>
+
