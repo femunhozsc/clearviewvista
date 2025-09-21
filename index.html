@@ -58,6 +58,9 @@
         .mobile-menu-closed {
             transform: translateX(100%);
         }
+        #menu-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-black text-gray-200 font-sans">
@@ -68,7 +71,7 @@
             </a>
 
             <!-- Menu Desktop -->
-            <div class="hidden md:flex items-center space-x-6 text-gray-300 font-medium">
+            <div class="hidden md:flex flex-1 justify-center items-center space-x-6 text-gray-300 font-medium">
                 <div class="relative dropdown">
                     <button class="hover:text-amber-400 transition-colors flex items-center py-2">Ações <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
                     <div class="dropdown-menu absolute hidden bg-zinc-800 rounded-md shadow-xl top-full mt-0 py-2 w-48 border border-zinc-700">
@@ -102,24 +105,32 @@
     </header>
     
     <!-- Menu Mobile -->
-    <div id="mobile-menu" class="fixed top-0 right-0 h-full w-64 bg-zinc-900 shadow-lg z-[60] transform mobile-menu-closed">
-        <div class="p-5">
-            <button id="close-menu-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white">&times;</button>
-            <nav class="mt-10 flex flex-col space-y-4 text-lg">
-                <a href="#" onclick="renderizarComparador('acoes', event); fecharMenuMobile();" class="text-gray-300 hover:text-amber-400">Comparador de Ativos</a>
-                <a href="#" onclick="renderizarSimulador('acoes', event); fecharMenuMobile();" class="text-gray-300 hover:text-amber-400">Simulador</a>
-                <a href="#" onclick="renderizarComparador('fiis', event); fecharMenuMobile();" class="text-gray-300 hover:text-amber-400">Comparador de Fundos</a>
-                <a href="#" onclick="renderizarSimulador('fiis', event); fecharMenuMobile();" class="text-gray-300 hover:text-amber-400">Simulador de Fundos</a>
-                <a href="#" class="text-gray-300 hover:text-amber-400">Internacional</a>
-                <a href="#" class="text-gray-300 hover:text-amber-400">Notícias</a>
-                <a href="#" class="text-gray-300 hover:text-amber-400">Carteiras</a>
-                <hr class="border-zinc-700 my-4">
-                 <a href="#" class="flex items-center space-x-2 text-gray-300 font-medium hover:text-amber-400">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    <span>Login</span>
-                 </a>
-            </nav>
+    <div id="mobile-menu" class="fixed top-0 right-0 h-full w-72 bg-zinc-900 shadow-lg z-[60] transform mobile-menu-closed p-6">
+        <div class="flex justify-between items-center mb-12">
+            <span class="text-white font-bold text-xl">Menu</span>
+            <button id="close-menu-btn" class="text-gray-400 hover:text-white text-3xl">&times;</button>
         </div>
+        <nav class="flex flex-col space-y-2 text-lg">
+            <h3 class="text-amber-400 font-semibold text-sm uppercase tracking-wider">Ações</h3>
+            <a href="#" onclick="renderizarComparador('acoes', event); fecharMenuMobile();" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg><span>Comparador</span></a>
+            <a href="#" onclick="renderizarSimulador('acoes', event); fecharMenuMobile();" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg><span>Simulador</span></a>
+            
+            <h3 class="text-amber-400 font-semibold text-sm uppercase tracking-wider pt-4">Fundos</h3>
+            <a href="#" onclick="renderizarComparador('fiis', event); fecharMenuMobile();" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg><span>Comparador</span></a>
+            <a href="#" onclick="renderizarSimulador('fiis', event); fecharMenuMobile();" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg><span>Simulador</span></a>
+            
+             <hr class="border-zinc-700 my-4">
+             <a href="#" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><span>Internacional</span></a>
+             <a href="#" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><span>Notícias</span></a>
+             <a href="#" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><span>Carteiras</span></a>
+            
+             <div class="absolute bottom-6 left-6 right-6">
+                <a href="#" class="flex items-center justify-center space-x-2 text-gray-300 font-medium border border-zinc-700 hover:border-amber-400 hover:text-amber-400 rounded-full px-4 py-3 transition-colors">
+                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                   <span>Login</span>
+                </a>
+             </div>
+        </nav>
     </div>
     <div id="menu-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50"></div>
 
@@ -792,11 +803,35 @@
                 }
             });
         }
+
+        // --- LÓGICA DO MENU MOBILE ---
+        function abrirMenuMobile() {
+            const menu = document.getElementById('mobile-menu');
+            const overlay = document.getElementById('menu-overlay');
+            if (menu && overlay) {
+                menu.classList.remove('mobile-menu-closed');
+                overlay.classList.remove('hidden');
+            }
+        }
+
+        function fecharMenuMobile() {
+            const menu = document.getElementById('mobile-menu');
+            const overlay = document.getElementById('menu-overlay');
+            if (menu && overlay) {
+                menu.classList.add('mobile-menu-closed');
+                overlay.classList.add('hidden');
+            }
+        }
         
         document.addEventListener('DOMContentLoaded', (event) => {
             renderizarPaginaInicial();
             carregarListaDeAtivos();
             inicializarModal();
+
+            // Event Listeners do Menu Mobile
+            document.getElementById('hamburger-btn')?.addEventListener('click', abrirMenuMobile);
+            document.getElementById('close-menu-btn')?.addEventListener('click', fecharMenuMobile);
+            document.getElementById('menu-overlay')?.addEventListener('click', fecharMenuMobile);
         });
     </script>
 </body>
