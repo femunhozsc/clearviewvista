@@ -187,7 +187,7 @@
                         Dados, gráficos e indicadores para tomar as melhores decisões de investimento no mercado financeiro.
                     </p>
                     <div class="relative max-w-xl mx-auto search-container">
-                        <input type="text" id="heroSearchInput" placeholder="Buscar pelo ativo (ex: PETR4, Petrobras)" class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-4 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all text-lg" autocomplete="off">
+                        <input type="text" id="heroSearchInput" placeholder="Buscar por nome ou ticker... (ex: PETR4, BOVA11, bitcoin)" class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-4 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all text-lg" autocomplete="off">
                         <button id="heroSearchButton" class="absolute inset-y-0 right-0 flex items-center pr-5 text-gray-400 hover:text-amber-400 transition-colors">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </button>
@@ -362,7 +362,7 @@
                              <h3 class="text-2xl font-bold text-white">Histórico de Preços</h3>
                              <div class="flex items-center space-x-2 bg-zinc-900/70 p-1 rounded-lg">${botoesGraficoHTML}</div>
                         </div>
-                        <div class="relative h-96 md:h-[500px]"><canvas id="ativoChart"></canvas></div>
+                        <div class="relative h-80 md:h-[500px]"><canvas id="ativoChart"></canvas></div>
                     </div>
                 </div>
             `;
@@ -611,10 +611,18 @@
             gradienteFundo.addColorStop(0, ehPositivo ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)');
             gradienteFundo.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
+            const longPeriod = ['1y', '5y', 'max'];
+            const pointRadius = longPeriod.includes(periodo.toLowerCase()) ? 0 : 2;
+            const pointHoverRadius = longPeriod.includes(periodo.toLowerCase()) ? 4 : 5;
+
             currentChart.data.labels = historico.labels;
-            currentChart.data.datasets[0].data = historico.data;
-            currentChart.data.datasets[0].borderColor = corLinha;
-            currentChart.data.datasets[0].backgroundColor = gradienteFundo;
+            const dataset = currentChart.data.datasets[0];
+            dataset.data = historico.data;
+            dataset.borderColor = corLinha;
+            dataset.backgroundColor = gradienteFundo;
+            dataset.pointRadius = pointRadius;
+            dataset.pointHoverRadius = pointHoverRadius;
+            dataset.pointBackgroundColor = corLinha;
             
             currentChart.update();
             
@@ -634,7 +642,15 @@
             
             currentChart = new Chart(ctx, {
                 type: 'line',
-                data: { labels: [], datasets: [{ label: 'Preço', data: [] }] },
+                data: { 
+                    labels: [], 
+                    datasets: [{ 
+                        label: 'Preço', 
+                        data: [],
+                        tension: 0.1,
+                        borderWidth: 2
+                    }] 
+                },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     scales: {
@@ -739,19 +755,22 @@
                          <h3 class="text-2xl font-bold text-white">Performance Normalizada (Base 100)</h3>
                          <div class="flex items-center space-x-2 bg-zinc-900/70 p-1 rounded-lg">${botoesGraficoHTML}</div>
                     </div>
-                    <div class="relative h-96 md:h-[500px]"><canvas id="comparativoChart"></canvas></div>
+                    <div class="relative h-80 md:h-[500px]"><canvas id="comparativoChart"></canvas></div>
                 </div>
             `;
             
-            setTimeout(() => inicializarGraficoComparativo(historico_normalizado), 100);
+            setTimeout(() => inicializarGraficoComparativo(historico_normalizado, periodo), 100);
         }
 
-        function inicializarGraficoComparativo(historico) {
+        function inicializarGraficoComparativo(historico, periodo) {
             if (currentChart) currentChart.destroy();
             const canvas = document.getElementById('comparativoChart');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             
+            const longPeriod = ['1y', '5y', 'max'];
+            const pointRadius = longPeriod.includes(periodo.toLowerCase()) ? 0 : 2;
+
             const datasets = Object.keys(historico.datasets).map((key, index) => {
                 const colors = ['#facc15', '#38bdf8']; // Amarelo e Azul
                 return {
@@ -759,7 +778,9 @@
                     data: historico.datasets[key],
                     borderColor: colors[index % colors.length],
                     backgroundColor: 'transparent',
-                    pointRadius: 0,
+                    pointRadius: pointRadius,
+                    pointHoverRadius: 4,
+                    borderWidth: 2,
                     tension: 0.1
                 }
             });

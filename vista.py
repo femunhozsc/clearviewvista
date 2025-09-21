@@ -27,12 +27,10 @@ class ClearviewVista:
         print("Carregando base de dados de ativos...")
         self.carregar_dados_csv('acoes-listadas-b3.csv', 'EQUITY', delimiter=',')
         self.carregar_dados_csv('fundosListados.csv', 'MUTUALFUND', delimiter=';')
-        self.carregar_dados_csv('etfs-listados-b3.csv', 'ETF', delimiter=',')
         print(f"✅ Base de dados carregada com {len(self.lista_completa_ativos)} ativos para sugestão.")
         
         if not DIFFLIB_AVAILABLE:
             print("\n⚠️  Atenção: A biblioteca 'difflib' não foi encontrada.")
-            print("  A pesquisa por nome aproximado de empresa estará desativada.\n")
 
         self.traducoes = {
             'EQUITY': 'Ação', 'CRYPTOCURRENCY': 'Criptomoeda', 'CURRENCY': 'Moeda',
