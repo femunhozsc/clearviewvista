@@ -20,7 +20,7 @@
         body::before {
             content: ''; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; z-index: -1; pointer-events: none;
-            background: radial-gradient(circle at 20% 15%, rgba(250, 204, 21, 0.15), transparent 60%),
+            background: radial-gradient(circle at 20% 15%, rgba(250, 204, 21, 0.15), transparent 40%),
                         radial-gradient(circle at 80% 85%, rgba(250, 204, 21, 0.12), transparent 50%);
             filter: blur(80px);
         }
@@ -544,7 +544,7 @@
                 listaAtivosCompleta = [];
             } finally {
                 const placeholders = {
-                    heroSearchInput: "Buscar ativo (ex: Petrobras PETR4)",
+                    heroSearchInput: "Buscar por nome ou ticker... (ex: PETR4, BOVA11, bitcoin)",
                     comparadorInput1: "Buscar Ativo 1...",
                     comparadorInput2: "Buscar Ativo 2..."
                 };

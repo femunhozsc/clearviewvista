@@ -33,12 +33,11 @@ def formatar_dados_para_web(info, historico, vista_instance, periodo_req='1y'):
         return vista_instance.formatar_valor(valor, tipo, moeda)
 
     preco_atual = info.get('regularMarketPrice')
-    fech_anterior = info.get('previousClose')
     var_monetaria = info.get('regularMarketChange')
     var_percentual = info.get('regularMarketChangePercent')
 
     dados_formatados = {
-        "ticker": info.get('symbol', 'N/D'),
+        "ticker": info.get('symbol', 'N/D').replace('.SA', ''),
         "nome": info.get('longName') or info.get('shortName', 'N/A'),
         "quoteType": quote_type,
         "preco_atual": fv(preco_atual, 'moeda'),
@@ -78,13 +77,9 @@ def formatar_dados_para_web(info, historico, vista_instance, periodo_req='1y'):
 
     # Processamento do histórico para o gráfico
     if historico is not None and not historico.empty:
-        # Assegura que o índice é DatetimeIndex
         if not isinstance(historico.index, pd.DatetimeIndex):
              historico.index = pd.to_datetime(historico.index)
         
-        # Filtra por período se necessário (ex: '5d', '1mo')
-        # ... lógica de filtragem de data se aplicável ...
-
         dados_formatados["historico_grafico"] = {
             "labels": historico.index.strftime('%Y-%m-%dT%H:%M:%S').tolist(),
             "data": historico['Close'].round(2).tolist()
@@ -92,24 +87,32 @@ def formatar_dados_para_web(info, historico, vista_instance, periodo_req='1y'):
 
     return dados_formatados
     
+def _resolve_ticker_and_get_data(termo, periodo='1y'):
+    """Helper para encontrar um ticker válido e buscar seus dados."""
+    # Tenta busca direta
+    dados = vista_analyzer.buscar_dados_ativo(termo, periodo=periodo)
+    if dados:
+        ticker_real = dados['info'].get('symbol', termo).replace('.SA', '')
+        return ticker_real, dados
+    
+    # Se falhar, tenta com sugestões
+    sugestoes = vista_analyzer.sugerir_ticker(termo)
+    if sugestoes:
+        primeiro_ticker = sugestoes[0]['ticker']
+        print(f"Termo '{termo}' não encontrado diretamente. Tentando sugestão: '{primeiro_ticker}'")
+        dados_sugestao = vista_analyzer.buscar_dados_ativo(primeiro_ticker, periodo=periodo)
+        if dados_sugestao:
+            return primeiro_ticker, dados_sugestao
+    
+    return None, None
 
 @app.route('/api/pesquisa/<termo>')
 def pesquisar_ativo(termo):
-    """Retorna os dados completos de um ativo ou uma lista de sugestões."""
+    """Retorna os dados completos de um ativo, resolvendo o ticker se necessário."""
     periodo = request.args.get('periodo', '1y')
-    
-    dados = vista_analyzer.buscar_dados_ativo(termo, periodo=periodo)
+    ticker_resolvido, dados = _resolve_ticker_and_get_data(termo, periodo)
+
     if not dados:
-        sugestoes = vista_analyzer.sugerir_ticker(termo)
-        if sugestoes:
-            # Se encontrou sugestões, busca os dados da primeira
-            primeira_sugestao_ticker = sugestoes[0]['ticker']
-            dados_sugestao = vista_analyzer.buscar_dados_ativo(primeira_sugestao_ticker, periodo=periodo)
-            if dados_sugestao:
-                return jsonify({
-                    "tipo": "dados_completos",
-                    "dados": formatar_dados_para_web(dados_sugestao['info'], dados_sugestao['historico'], vista_analyzer, periodo)
-                })
         return jsonify({"erro": f"Ativo '{termo}' não encontrado."}), 404
 
     dados_formatados = formatar_dados_para_web(dados['info'], dados['historico'], vista_analyzer, periodo)
@@ -117,6 +120,7 @@ def pesquisar_ativo(termo):
         "tipo": "dados_completos",
         "dados": dados_formatados
     })
+
 
 @app.route('/api/ativos/lista')
 def get_lista_ativos():
@@ -129,7 +133,6 @@ def get_destaques_homepage():
     """Busca e formata todos os dados necessários para a página inicial."""
     global cached_data, cache_timestamp
     
-    # Verifica o cache
     if cached_data and (time.time() - cache_timestamp < CACHE_DURATION):
         print("Retornando destaques do cache.")
         return jsonify(cached_data)
@@ -138,16 +141,13 @@ def get_destaques_homepage():
     
     dados_mercado = vista_analyzer.get_dados_mercado()
     
-    # Filtra e ordena para altas e baixas
     altas = sorted([d for d in dados_mercado if d.get('eh_positivo') == True], key=lambda x: x['variacao_num'], reverse=True)[:5]
     baixas = sorted([d for d in dados_mercado if d.get('eh_positivo') == False], key=lambda x: x['variacao_num'])[:5]
     
-    # Busca os demais rankings
     maiores_dy = vista_analyzer.get_top_dy()[:5]
     maiores_market_cap = vista_analyzer.get_top_market_cap()[:5]
     mais_buscadas = vista_analyzer.get_mais_negociadas()[:4]
 
-    # Monta o JSON de resposta
     response_data = {
         "mais_buscadas": mais_buscadas,
         "dados_mercado": dados_mercado[:4],
@@ -157,7 +157,6 @@ def get_destaques_homepage():
         "maiores_market_cap": maiores_market_cap
     }
 
-    # Atualiza o cache
     cached_data = response_data
     cache_timestamp = time.time()
     
@@ -169,11 +168,9 @@ def get_full_ranking(rankingType):
     """Retorna o ranking completo para um tipo específico com paginação."""
     cache_key = f"ranking_{rankingType}"
     
-    # Verifica se os dados estão em cache e são recentes
     if cache_key in vista_analyzer.cache and (time.time() - vista_analyzer.cache[cache_key]['timestamp'] < 300):
         full_ranking = vista_analyzer.cache[cache_key]['data']
     else:
-        # Lógica para buscar e processar os dados caso não estejam no cache
         if rankingType == 'altas':
             dados_brutos = vista_analyzer.get_dados_mercado()
             full_ranking = sorted([d for d in dados_brutos if d.get('eh_positivo') == True], key=lambda x: x['variacao_num'], reverse=True)
@@ -187,10 +184,8 @@ def get_full_ranking(rankingType):
         else:
             return jsonify({"erro": "Tipo de ranking inválido"}), 404
         
-        # Armazena no cache
         vista_analyzer.cache[cache_key] = {'data': full_ranking, 'timestamp': time.time()}
 
-    # Paginação
     page = request.args.get('page', 1, type=int)
     items_per_page = 10
     start_index = (page - 1) * items_per_page
@@ -205,8 +200,8 @@ def get_full_ranking(rankingType):
 def comparar_ativos(ticker1, ticker2):
     periodo = request.args.get('periodo', '1y')
     
-    dados1 = vista_analyzer.buscar_dados_ativo(ticker1, periodo=periodo)
-    dados2 = vista_analyzer.buscar_dados_ativo(ticker2, periodo=periodo)
+    ticker1_resolvido, dados1 = _resolve_ticker_and_get_data(ticker1, periodo)
+    ticker2_resolvido, dados2 = _resolve_ticker_and_get_data(ticker2, periodo)
 
     if not dados1 or not dados2:
         return jsonify({"erro": "Um ou ambos os ativos não foram encontrados."}), 404
@@ -247,7 +242,7 @@ def comparar_ativos(ticker1, ticker2):
     if hist1 is None or hist2 is None or hist1.empty or hist2.empty:
         return jsonify({"erro": "Dados históricos insuficientes para comparação."}), 404
         
-    hist_merged = pd.concat([hist1['Close'].rename(ticker1), hist2['Close'].rename(ticker2)], axis=1).dropna()
+    hist_merged = pd.concat([hist1['Close'].rename(ticker1_resolvido), hist2['Close'].rename(ticker2_resolvido)], axis=1).dropna()
     
     if hist_merged.empty:
         return jsonify({"erro": "Não há dados históricos sobrepostos para o período selecionado."}), 400
@@ -257,14 +252,14 @@ def comparar_ativos(ticker1, ticker2):
     historico_normalizado = {
         'labels': normalized_hist.index.strftime('%Y-%m-%dT%H:%M:%S').tolist(),
         'datasets': {
-            ticker1.upper(): normalized_hist[ticker1].tolist(),
-            ticker2.upper(): normalized_hist[ticker2].tolist()
+            ticker1_resolvido.upper(): normalized_hist[ticker1_resolvido].tolist(),
+            ticker2_resolvido.upper(): normalized_hist[ticker2_resolvido].tolist()
         }
     }
     
     resultado = {
-        "ativo1": {"ticker": ticker1.upper(), "nome": info1.get('longName', ''), "quoteType": info1.get('quoteType')},
-        "ativo2": {"ticker": ticker2.upper(), "nome": info2.get('longName', ''), "quoteType": info2.get('quoteType')},
+        "ativo1": {"ticker": ticker1_resolvido.upper(), "nome": info1.get('longName', ''), "quoteType": info1.get('quoteType')},
+        "ativo2": {"ticker": ticker2_resolvido.upper(), "nome": info2.get('longName', ''), "quoteType": info2.get('quoteType')},
         "indicadores_comparativos": indicadores_comparativos,
         "historico_normalizado": historico_normalizado
     }
@@ -273,3 +268,4 @@ def comparar_ativos(ticker1, ticker2):
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
+
