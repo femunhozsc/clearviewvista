@@ -50,10 +50,6 @@
         .dropdown-menu { transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out; }
         #suggestion-box, .suggestion-box { max-height: 300px; overflow-y: auto; }
         #rankingModal.hidden { display: none; }
-        input:disabled {
-            cursor: not-allowed;
-            background-color: #27272a;
-        }
     </style>
 </head>
 <body class="bg-black text-gray-200 font-sans">
@@ -63,7 +59,6 @@
                 <img src="logo.png" alt="Clearview Vista Logo" class="h-12"> 
             </a>
 
-            <!-- Menu Desktop -->
             <div class="hidden md:flex flex-1 justify-center items-center space-x-6 text-gray-300 font-medium">
                 <div class="relative dropdown">
                     <button class="hover:text-amber-400 transition-colors flex items-center py-2">Ações <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
@@ -89,7 +84,6 @@
                      <span>Login</span>
                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                  </a>
-                 <!-- Botão Menu Hamburguer (visível em mobile) -->
                  <button id="hamburger-btn" class="md:hidden text-gray-300 hover:text-amber-400">
                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                  </button>
@@ -97,7 +91,6 @@
         </nav>
     </header>
     
-    <!-- Menu Mobile -->
     <div id="mobile-menu" class="fixed top-0 right-0 h-full w-72 bg-zinc-900 shadow-lg z-[60] p-6 transition-transform duration-300 ease-in-out translate-x-full">
         <div class="flex justify-between items-center mb-12">
             <span class="text-white font-bold text-xl">Menu</span>
@@ -141,10 +134,9 @@
         <div class="card-background w-full max-w-2xl max-h-[80vh] flex flex-col">
             <div class="flex justify-between items-center p-4 border-b border-zinc-800">
                 <h3 id="modalTitle" class="text-xl font-bold text-white">Ranking Completo</h3>
-                <button id="closeModalBtn" class="text-gray-400 hover:text-white text-3xl">&times;</button>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-white">&times;</button>
             </div>
             <div id="modalContent" class="p-6 overflow-y-auto">
-                 <!-- O conteúdo do ranking será inserido aqui -->
             </div>
         </div>
     </div>
@@ -166,18 +158,18 @@
             if (quoteType === 'CRYPTOCURRENCY') {
                 const symbol = ticker.toLowerCase();
                 const imageUrl = `crypto_logos/${symbol}.png`;
-                return `<img src="${imageUrl}" alt="Logo ${ticker}" class="${sizeClasses} rounded-full" onerror="this.onerror=null;this.src='${placeholderUrl}';">`;
+                return `<img src="${imageUrl}" alt="Logo ${ticker}" class="${sizeClasses} rounded-full object-contain" onerror="this.onerror=null;this.src='${placeholderUrl}';">`;
             } else if (quoteType === 'CURRENCY') {
                 const symbol = ticker.substring(0, 3).toLowerCase(); 
                 const imageUrl = `flags/${symbol}.png`;
-                return `<img src="${imageUrl}" alt="Logo ${ticker}" class="${sizeClasses} ${extraClasses}" onerror="this.onerror=null;this.src='${placeholderUrl}';">`;
+                return `<img src="${imageUrl}" alt="Logo ${ticker}" class="${sizeClasses} ${extraClasses} object-contain" onerror="this.onerror=null;this.src='${placeholderUrl}';">`;
             } else if (quoteType === 'INDEX') {
                  return `<div class="${sizeClasses} ${extraClasses} bg-zinc-800 flex items-center justify-center"><span class="font-bold text-amber-400">${ticker.charAt(0)}</span></div>`;
             }
             else { 
                 const pngUrl = `b3_logos/${ticker}.png`;
                 const jpegUrl = `b3_logos/${ticker}.jpeg`;
-                return `<img src="${pngUrl}" alt="Logo ${ticker}" class="${sizeClasses} ${extraClasses}" onerror="this.onerror=null; this.src='${jpegUrl}'; this.onerror=()=>{this.onerror=null; this.src='${placeholderUrl}'};">`;
+                return `<img src="${pngUrl}" alt="Logo ${ticker}" class="${sizeClasses} ${extraClasses} object-contain" onerror="this.onerror=null; this.src='${jpegUrl}'; this.onerror=()=>{this.onerror=null; this.src='${placeholderUrl}'};">`;
             }
         }
         
@@ -191,12 +183,12 @@
                     <p class="text-lg text-gray-400 mb-10 max-w-3xl mx-auto">
                         Dados, gráficos e indicadores para tomar as melhores decisões de investimento no mercado financeiro.
                     </p>
-                    <div class="relative max-w-xl mx-auto search-container">
-                        <input type="text" id="heroSearchInput" placeholder="Carregando ativos..." class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-4 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all text-lg" autocomplete="off" disabled>
+                    <div class="relative max-w-xl mx-auto">
+                        <input type="text" id="heroSearchInput" placeholder="Buscar por nome ou ticker... (ex: PETR4, BOVA11, bitcoin)" class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-4 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all text-lg" autocomplete="off">
                         <button id="heroSearchButton" class="absolute inset-y-0 right-0 flex items-center pr-5 text-gray-400 hover:text-amber-400 transition-colors">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </button>
-                        <div id="suggestion-box" class="absolute hidden w-full mt-2 card-background shadow-lg suggestion-box z-20"></div>
+                        <div id="suggestion-box" class="absolute hidden w-full mt-2 card-background shadow-lg"></div>
                     </div>
                 </div>
                 <div id="homepage-content" class="mt-12">
@@ -206,17 +198,24 @@
             const searchInput = document.getElementById('heroSearchInput');
             const searchButton = document.getElementById('heroSearchButton');
 
-            searchInput.addEventListener('input', (e) => mostrarSugestoes(e.target, document.getElementById('suggestion-box'), true));
+            searchInput.addEventListener('input', (e) => mostrarSugestoes(e.target, document.getElementById('suggestion-box')));
             searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarAtivo(e.target.value); });
             searchButton.addEventListener('click', () => { buscarAtivo(searchInput.value); });
-            
+            document.addEventListener('click', (e) => {
+                const suggestionBox = document.getElementById('suggestion-box');
+                const searchContainer = document.querySelector('.relative.max-w-xl.mx-auto');
+                if (suggestionBox && searchContainer && !searchContainer.contains(e.target)) {
+                    suggestionBox.classList.add('hidden');
+                }
+            });
+
             carregarDadosPaginaInicial();
         }
 
         function renderizarRankings(titulo, ativos, corBorda, corTexto, tipoRanking) {
             let cardsHTML = '<div class="text-center p-4 text-gray-500">Nenhum dado para exibir.</div>';
             if (ativos && ativos.length > 0) {
-                cardsHTML = ativos.slice(0, 3).map((ativo, index) => `
+                cardsHTML = ativos.map((ativo, index) => `
                     <div onclick="buscarAtivo('${ativo.ticker}')" class="bg-zinc-900/70 p-4 rounded-lg flex items-center fade-in-up cursor-pointer hover:bg-zinc-800 transition-colors" style="--animation-delay: ${index * 100}ms;">
                         <div class="mr-3 flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-8 h-8')}</div>
                         <div class="flex-1 flex justify-between items-center">
@@ -242,7 +241,7 @@
         function renderizarRankingCustom(titulo, ativos, corBorda, corTexto, tipoRanking, valorLabel) {
             let cardsHTML = '<div class="text-center p-4 text-gray-500">Nenhum dado para exibir.</div>';
             if (ativos && ativos.length > 0) {
-                cardsHTML = ativos.slice(0, 3).map((ativo, index) => `
+                cardsHTML = ativos.map((ativo, index) => `
                     <div onclick="buscarAtivo('${ativo.ticker}')" class="bg-zinc-900/70 p-4 rounded-lg flex items-center fade-in-up cursor-pointer hover:bg-zinc-800 transition-colors" style="--animation-delay: ${index * 100}ms;">
                         <div class="mr-3 flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-8 h-8')}</div>
                         <div class="flex-1 flex justify-between items-center">
@@ -272,12 +271,12 @@
                     <p class="text-lg text-gray-400 mb-10">Selecione dois ativos para comparar seus indicadores e performance.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 fade-in-up" style="--animation-delay: 200ms;">
-                    <div class="relative search-container">
-                        <input type="text" id="comparadorInput1" placeholder="Carregando ativos..." class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all text-lg" autocomplete="off" disabled>
+                    <div class="relative">
+                        <input type="text" id="comparadorInput1" placeholder="Buscar Ativo 1..." class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all text-lg" autocomplete="off">
                         <div id="suggestion-box-1" class="absolute hidden w-full mt-2 card-background shadow-lg z-20 suggestion-box"></div>
                     </div>
-                    <div class="relative search-container">
-                        <input type="text" id="comparadorInput2" placeholder="Carregando ativos..." class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all text-lg" autocomplete="off" disabled>
+                    <div class="relative">
+                        <input type="text" id="comparadorInput2" placeholder="Buscar Ativo 2..." class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 transition-all text-lg" autocomplete="off">
                          <div id="suggestion-box-2" class="absolute hidden w-full mt-2 card-background shadow-lg z-20 suggestion-box"></div>
                     </div>
                 </div>
@@ -292,8 +291,8 @@
             const input2 = document.getElementById('comparadorInput2');
             const suggestionBox2 = document.getElementById('suggestion-box-2');
 
-            input1.addEventListener('input', () => mostrarSugestoes(input1, suggestionBox1, false));
-            input2.addEventListener('input', () => mostrarSugestoes(input2, suggestionBox2, false));
+            input1.addEventListener('input', () => mostrarSugestoes(input1, suggestionBox1));
+            input2.addEventListener('input', () => mostrarSugestoes(input2, suggestionBox2));
 
             document.getElementById('compareBtn').addEventListener('click', buscarECompararAtivos);
         }
@@ -348,17 +347,17 @@
 
             mainContainer.innerHTML = `
                 <div class="fade-in-up">
-                    <div class="card-background p-6 md:p-8 mb-8 flex flex-col md:flex-row justify-between md:items-center">
-                        <div class="flex items-center space-x-4 min-w-0">
+                    <div class="card-background p-8 mb-8 flex flex-col md:flex-row justify-between md:items-center">
+                        <div class="flex items-center space-x-6">
                             <div class="block flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-16 h-16 md:w-20 md:h-20', 'rounded-xl')}</div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-xl md:text-2xl text-amber-400 font-mono mb-1 truncate">${ativo.ticker}</p>
-                                <h1 class="text-2xl md:text-4xl lg:text-5xl font-extrabold text-white truncate" title="${ativo.nome}">${ativo.nome}</h1>
+                            <div>
+                                <p class="text-2xl text-amber-400 font-mono mb-1">${ativo.ticker}</p>
+                                <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white break-words">${ativo.nome}</h1>
                             </div>
                         </div>
-                        <div class="text-left md:text-right mt-6 md:mt-0 flex-shrink-0 pl-0 md:pl-4">
-                            <p class="text-4xl md:text-5xl lg:text-6xl font-bold text-white">${ativo.preco_atual}</p>
-                            <p class="text-xl md:text-2xl font-semibold ${corVariacao} mt-1">${sinalVariacao}${ativo.variacao_dia_pct} (${sinalVariacao}${ativo.variacao_dia_abs})</p>
+                        <div class="text-left md:text-right mt-6 md:mt-0 flex-shrink-0">
+                            <p class="text-5xl lg:text-6xl font-bold text-white">${ativo.preco_atual}</p>
+                            <p class="text-2xl font-semibold ${corVariacao} mt-1">${sinalVariacao}${ativo.variacao_dia_pct} (${sinalVariacao}${ativo.variacao_dia_abs})</p>
                         </div>
                     </div>
                     ${secoesHTML ? `<div class="card-background p-6 mb-8">${secoesHTML}</div>` : ''}
@@ -367,7 +366,7 @@
                              <h3 class="text-2xl font-bold text-white">Histórico de Preços</h3>
                              <div class="flex items-center space-x-2 bg-zinc-900/70 p-1 rounded-lg">${botoesGraficoHTML}</div>
                         </div>
-                        <div class="relative h-80 md:h-[500px]"><canvas id="ativoChart"></canvas></div>
+                        <div class="relative h-96 md:h-[500px]"><canvas id="ativoChart"></canvas></div>
                     </div>
                 </div>
             `;
@@ -493,7 +492,7 @@
             }
         }
         
-        function mostrarSugestoes(inputElement, suggestionBoxElement, searchOnClick = false) {
+        function mostrarSugestoes(inputElement, suggestionBoxElement) {
             const termo = inputElement.value.toLowerCase();
             
             if (termo.length < 1) {
@@ -520,9 +519,6 @@
                     item.addEventListener('click', () => {
                         inputElement.value = item.dataset.ticker;
                         suggestionBoxElement.classList.add('hidden');
-                         if (searchOnClick) {
-                            buscarAtivo(item.dataset.ticker);
-                        }
                     });
                 });
 
@@ -535,109 +531,53 @@
         async function carregarListaDeAtivos() {
             try {
                 const response = await fetch(`${apiUrl}/api/ativos/lista`);
-                if (!response.ok) throw new Error(`API Error: ${response.status}`);
-                const data = await response.json();
-                if (!Array.isArray(data)) throw new Error("A API não retornou uma lista.");
-                listaAtivosCompleta = data;
+                listaAtivosCompleta = await response.json();
             } catch (e) {
-                console.error("Não foi possível carregar a lista de ativos para sugestões.", e);
-                listaAtivosCompleta = [];
-            } finally {
-                const placeholders = {
-                    heroSearchInput: "Buscar por nome ou ticker... (ex: PETR4, BOVA11, bitcoin)",
-                    comparadorInput1: "Buscar Ativo 1...",
-                    comparadorInput2: "Buscar Ativo 2..."
-                };
-                Object.keys(placeholders).forEach(id => {
-                    const input = document.getElementById(id);
-                    if (input) {
-                        input.disabled = false;
-                        input.placeholder = placeholders[id];
-                    }
-                });
+                console.error("Não foi possível carregar a lista de ativos para sugestões.");
             }
         }
         
-        let rankingCurrentPage = 1;
-        let rankingCurrentType = '';
-        let rankingIsLoading = false;
-
-        async function carregarPaginaRanking() {
-            if (rankingIsLoading) return;
-            rankingIsLoading = true;
-
-            const loader = document.getElementById('ranking-loader');
-            const loadMoreBtn = document.getElementById('loadMoreBtn');
-            const listContainer = document.getElementById('ranking-list');
-
-            if (loader) loader.classList.remove('hidden');
-            if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
-
-            try {
-                const response = await fetch(`${apiUrl}/api/ranking/${rankingCurrentType}?page=${rankingCurrentPage}`);
-                const data = await response.json();
-                
-                if(data.length > 0){
-                    let contentHTML = '';
-                    data.forEach((ativo, index) => {
-                        let valor;
-                        let corValor = '';
-                        const itemIndex = ((rankingCurrentPage - 1) * 10) + index + 1;
-
-                        switch(rankingCurrentType) {
-                            case 'altas': valor = `+${ativo.variacao}`; corValor = 'text-green-400'; break;
-                            case 'baixas': valor = ativo.variacao; corValor = 'text-red-400'; break;
-                            case 'dy': valor = ativo.dy_formatado; corValor = 'text-blue-400'; break;
-                            case 'market_cap': valor = ativo.market_cap_formatado; corValor = 'text-purple-400'; break;
-                        }
-
-                        contentHTML += `
-                            <div onclick="buscarAtivo('${ativo.ticker}')" class="bg-zinc-900/70 p-3 rounded-lg flex items-center cursor-pointer hover:bg-zinc-800 transition-colors">
-                                <span class="mr-4 text-gray-500 font-bold w-6">${itemIndex}.</span>
-                                <div class="mr-3 flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-6 h-6')}</div>
-                                <div class="flex-1 flex justify-between items-center">
-                                    <div><span class="font-bold text-white">${ativo.ticker}</span></div>
-                                    <span class="font-semibold ${corValor}">${valor}</span>
-                                </div>
-                            </div>`;
-                    });
-                    listContainer.insertAdjacentHTML('beforeend', contentHTML);
-                    rankingCurrentPage++;
-                }
-                
-                if (data.length < 10) {
-                    if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
-                } else {
-                    if (loadMoreBtn) loadMoreBtn.classList.remove('hidden');
-                }
-
-            } catch(e) {
-                listContainer.innerHTML = '<p class="text-red-400 text-center">Não foi possível carregar o ranking.</p>';
-            } finally {
-                if (loader) loader.classList.add('hidden');
-                rankingIsLoading = false;
-            }
-        }
-
-        function mostrarRankingCompleto(rankingType, titulo) {
-            rankingCurrentPage = 1;
-            rankingCurrentType = rankingType;
-            
+        async function mostrarRankingCompleto(rankingType, titulo) {
             const modal = document.getElementById('rankingModal');
             const modalTitle = document.getElementById('modalTitle');
             const modalContent = document.getElementById('modalContent');
             
             modalTitle.textContent = titulo;
-            modalContent.innerHTML = `
-                <div id="ranking-list" class="grid grid-cols-1 gap-3"></div>
-                <div id="ranking-loader" class="flex justify-center items-center p-4 hidden">
-                    <div class="loader border-4 border-zinc-800 rounded-full w-8 h-8"></div>
-                </div>
-                <button id="loadMoreBtn" onclick="carregarPaginaRanking()" class="w-full mt-4 text-center bg-amber-500 hover:bg-amber-600 text-black font-semibold py-2 rounded-lg transition-colors">Carregar Mais</button>
-            `;
-            
+            modalContent.innerHTML = `<div class="flex justify-center items-center p-8"><div class="loader border-4 border-zinc-800 rounded-full w-8 h-8"></div></div>`;
             modal.classList.remove('hidden');
-            carregarPaginaRanking();
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/ranking/${rankingType}`);
+                const data = await response.json();
+                
+                let contentHTML = '<div class="grid grid-cols-1 gap-3">';
+                data.forEach((ativo, index) => {
+                    let valor;
+                    let corValor = '';
+                    switch(rankingType) {
+                        case 'altas': valor = `+${ativo.variacao}`; corValor = 'text-green-400'; break;
+                        case 'baixas': valor = ativo.variacao; corValor = 'text-red-400'; break;
+                        case 'dy': valor = ativo.dy_formatado; corValor = 'text-blue-400'; break;
+                        case 'market_cap': valor = ativo.market_cap_formatado; corValor = 'text-purple-400'; break;
+                    }
+
+                    contentHTML += `
+                        <div onclick="buscarAtivo('${ativo.ticker}')" class="bg-zinc-900/70 p-3 rounded-lg flex items-center cursor-pointer hover:bg-zinc-800 transition-colors">
+                            <span class="mr-4 text-gray-500 font-bold w-6">${index + 1}.</span>
+                            <div class="mr-3 flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-6 h-6')}</div>
+                            <div class="flex-1 flex justify-between items-center">
+                                <div><span class="font-bold text-white">${ativo.ticker}</span></div>
+                                <span class="font-semibold ${corValor}">${valor}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                contentHTML += '</div>';
+                modalContent.innerHTML = contentHTML;
+
+            } catch(e) {
+                modalContent.innerHTML = '<p class="text-red-400 text-center">Não foi possível carregar o ranking.</p>';
+            }
         }
 
         function inicializarModal() {
@@ -672,18 +612,10 @@
             gradienteFundo.addColorStop(0, ehPositivo ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)');
             gradienteFundo.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
-            const longPeriod = ['1y', '5y', 'max'];
-            const pointRadius = longPeriod.includes(periodo.toLowerCase()) ? 0 : 2;
-            const pointHoverRadius = longPeriod.includes(periodo.toLowerCase()) ? 4 : 5;
-
             currentChart.data.labels = historico.labels;
-            const dataset = currentChart.data.datasets[0];
-            dataset.data = historico.data;
-            dataset.borderColor = corLinha;
-            dataset.backgroundColor = gradienteFundo;
-            dataset.pointRadius = pointRadius;
-            dataset.pointHoverRadius = pointHoverRadius;
-            dataset.pointBackgroundColor = corLinha;
+            currentChart.data.datasets[0].data = historico.data;
+            currentChart.data.datasets[0].borderColor = corLinha;
+            currentChart.data.datasets[0].backgroundColor = gradienteFundo;
             
             currentChart.update();
             
@@ -703,15 +635,7 @@
             
             currentChart = new Chart(ctx, {
                 type: 'line',
-                data: { 
-                    labels: [], 
-                    datasets: [{ 
-                        label: 'Preço', 
-                        data: [],
-                        tension: 0.1,
-                        borderWidth: 2
-                    }] 
-                },
+                data: { labels: [], datasets: [{ label: 'Preço', data: [] }] },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     scales: {
@@ -816,22 +740,19 @@
                          <h3 class="text-2xl font-bold text-white">Performance Normalizada (Base 100)</h3>
                          <div class="flex items-center space-x-2 bg-zinc-900/70 p-1 rounded-lg">${botoesGraficoHTML}</div>
                     </div>
-                    <div class="relative h-80 md:h-[500px]"><canvas id="comparativoChart"></canvas></div>
+                    <div class="relative h-96 md:h-[500px]"><canvas id="comparativoChart"></canvas></div>
                 </div>
             `;
             
-            setTimeout(() => inicializarGraficoComparativo(historico_normalizado, periodo), 100);
+            setTimeout(() => inicializarGraficoComparativo(historico_normalizado), 100);
         }
 
-        function inicializarGraficoComparativo(historico, periodo) {
+        function inicializarGraficoComparativo(historico) {
             if (currentChart) currentChart.destroy();
             const canvas = document.getElementById('comparativoChart');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             
-            const longPeriod = ['1y', '5y', 'max'];
-            const pointRadius = longPeriod.includes(periodo.toLowerCase()) ? 0 : 2;
-
             const datasets = Object.keys(historico.datasets).map((key, index) => {
                 const colors = ['#facc15', '#38bdf8']; // Amarelo e Azul
                 return {
@@ -839,9 +760,7 @@
                     data: historico.datasets[key],
                     borderColor: colors[index % colors.length],
                     backgroundColor: 'transparent',
-                    pointRadius: pointRadius,
-                    pointHoverRadius: 4,
-                    borderWidth: 2,
+                    pointRadius: 0,
                     tension: 0.1
                 }
             });
@@ -898,17 +817,7 @@
             document.getElementById('hamburger-btn')?.addEventListener('click', abrirMenuMobile);
             document.getElementById('close-menu-btn')?.addEventListener('click', fecharMenuMobile);
             document.getElementById('menu-overlay')?.addEventListener('click', fecharMenuMobile);
-
-            // Listener global para fechar as caixas de sugestão
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.search-container')) {
-                    document.querySelectorAll('.suggestion-box').forEach(box => {
-                        box.classList.add('hidden');
-                    });
-                }
-            });
         });
     </script>
 </body>
 </html>
-
