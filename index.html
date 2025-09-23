@@ -10,6 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="data_loader.js"></script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,7 +49,16 @@
         [style*="--animation-delay"] { animation-delay: var(--animation-delay); }
         .dropdown:hover .dropdown-menu { display: block; }
         .dropdown-menu { transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out; }
-        #suggestion-box, .suggestion-box { max-height: 300px; overflow-y: auto; }
+        #suggestion-box, .suggestion-box { 
+            max-height: 300px; 
+            overflow-y: auto; 
+            z-index: 9999 !important;
+            position: absolute;
+            background: rgba(24, 24, 27, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 0.75rem;
+        }
         #rankingModal.hidden { display: none; }
     </style>
 </head>
@@ -293,6 +303,16 @@
 
             input1.addEventListener('input', () => mostrarSugestoes(input1, suggestionBox1));
             input2.addEventListener('input', () => mostrarSugestoes(input2, suggestionBox2));
+            
+            // Esconder sugestões quando clicar fora
+            document.addEventListener('click', (e) => {
+                if (!input1.contains(e.target) && !suggestionBox1.contains(e.target)) {
+                    suggestionBox1.classList.add('hidden');
+                }
+                if (!input2.contains(e.target) && !suggestionBox2.contains(e.target)) {
+                    suggestionBox2.classList.add('hidden');
+                }
+            });
 
             document.getElementById('compareBtn').addEventListener('click', buscarECompararAtivos);
         }
@@ -500,9 +520,15 @@
                 return;
             }
             
-            const sugestoes = listaAtivosCompleta.filter(ativo => 
-                ativo.ticker.toLowerCase().includes(termo) || ativo.nome.toLowerCase().includes(termo)
-            ).slice(0, 5); 
+            // Usa dados locais se a API não estiver disponível
+            let sugestoes = [];
+            if (listaAtivosCompleta && listaAtivosCompleta.length > 0) {
+                sugestoes = listaAtivosCompleta.filter(ativo => 
+                    ativo.ticker.toLowerCase().includes(termo) || ativo.nome.toLowerCase().includes(termo)
+                ).slice(0, 5);
+            } else if (window.DADOS_ATIVOS) {
+                sugestoes = window.DADOS_ATIVOS.buscarSugestoes(termo);
+            }
 
             if (sugestoes.length > 0) {
                 suggestionBoxElement.innerHTML = sugestoes.map(s => `
@@ -519,10 +545,13 @@
                     item.addEventListener('click', () => {
                         inputElement.value = item.dataset.ticker;
                         suggestionBoxElement.classList.add('hidden');
+                        // Trigger busca automaticamente
+                        buscarAtivo(item.dataset.ticker);
                     });
                 });
 
                 suggestionBoxElement.classList.remove('hidden');
+                suggestionBoxElement.style.zIndex = '9999';
             } else {
                 suggestionBoxElement.classList.add('hidden');
             }
