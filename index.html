@@ -11,9 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="data_loader.js"></script>
-    <script src="router.js"></script>
-    <script src="lazy-loading.js"></script>
-    <script src="comparator-fix.js"></script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -199,17 +196,84 @@
         </div>
     </div>
 
-
     <script>
+        // Variáveis globais
         const mainContainer = document.getElementById('main-container');
         let currentChart = null;
         let currentTicker = null;
         let listaAtivosCompleta = [];
+        let debounceTimer;
         const apiUrl = 'https://clearview-api-y531.onrender.com';
         
         const iconUp = `<svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>`;
         const iconDown = `<svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4 4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>`;
 
+        // Sistema de Roteamento
+        class Router {
+            constructor() {
+                this.routes = {};
+                this.init();
+            }
+
+            init() {
+                window.addEventListener('popstate', () => {
+                    this.handleRoute();
+                });
+
+                document.addEventListener('click', (e) => {
+                    const link = e.target.closest('a[href^="/"]');
+                    if (link && !link.hasAttribute('target')) {
+                        e.preventDefault();
+                        this.navigate(link.getAttribute('href'));
+                    }
+                });
+
+                this.handleRoute();
+            }
+
+            navigate(path) {
+                if (path !== window.location.pathname) {
+                    window.history.pushState({}, '', path);
+                }
+                this.handleRoute();
+            }
+
+            handleRoute() {
+                const path = window.location.pathname;
+                
+                // Rotas específicas
+                if (path === '/') {
+                    renderizarPaginaInicial();
+                } else if (path === '/comparador') {
+                    renderizarComparador();
+                } else if (path === '/noticias') {
+                    renderizarPaginaNoticias();
+                } else if (path.startsWith('/comparador/')) {
+                    const tickers = path.replace('/comparador/', '').split('-');
+                    if (tickers.length === 2) {
+                        renderizarComparador();
+                        setTimeout(() => {
+                            document.getElementById('comparadorInput1').value = tickers[0].toUpperCase();
+                            document.getElementById('comparadorInput2').value = tickers[1].toUpperCase();
+                            buscarECompararAtivos();
+                        }, 100);
+                    } else {
+                        this.navigate('/comparador');
+                    }
+                } else if (path.match(/^\/[A-Z0-9-]+$/)) {
+                    // Rota para ativo específico
+                    const ticker = path.substring(1);
+                    buscarAtivo(ticker);
+                } else {
+                    // Rota não encontrada, redireciona para home
+                    this.navigate('/');
+                }
+            }
+        }
+
+        const router = new Router();
+
+        // Função auxiliar para logos
         function getLogoHTML(ticker, quoteType, sizeClasses = 'w-10 h-10', extraClasses = 'rounded-full') {
             const placeholderUrl = `https://placehold.co/40x40/18181b/facc15?text=${ticker.charAt(0)}`;
             
@@ -230,19 +294,124 @@
                 return `<img src="${pngUrl}" alt="Logo ${ticker}" class="${sizeClasses} ${extraClasses} object-contain" onerror="this.onerror=null; this.src='${jpegUrl}'; this.onerror=()=>{this.onerror=null; this.src='${placeholderUrl}'};">`;
             }
         }
+
+        // Função para mostrar sugestões
+        async function mostrarSugestoes(inputElement, suggestionBoxElement) {
+            const termo = inputElement.value.toLowerCase();
+            clearTimeout(debounceTimer);
+
+            if (termo.length < 1) {
+                suggestionBoxElement.classList.add('hidden');
+                return;
+            }
+
+            debounceTimer = setTimeout(async () => {
+                if (listaAtivosCompleta.length === 0) {
+                    try {
+                        const response = await fetch(`${apiUrl}/api/ativos/lista`);
+                        listaAtivosCompleta = await response.json();
+                    } catch (error) {
+                        console.error('Erro ao carregar lista de ativos:', error);
+                    }
+                }
+
+                const sugestoes = listaAtivosCompleta.filter(ativo => 
+                    ativo.ticker.toLowerCase().includes(termo) || ativo.nome.toLowerCase().includes(termo)
+                ).slice(0, 5);
+
+                if (sugestoes.length > 0) {
+                    suggestionBoxElement.innerHTML = sugestoes.map(s => `
+                        <div data-ticker="${s.ticker}" class="suggestion-item p-3 cursor-pointer hover:bg-zinc-700 transition-colors border-b border-zinc-800 last:border-b-0 flex items-center space-x-3">
+                            <div class="flex-shrink-0">${getLogoHTML(s.ticker, s.quoteType, 'w-6 h-6')}</div>
+                            <div>
+                                <span class="font-bold text-white">${s.ticker}</span>
+                                <span class="text-gray-400 text-sm">- ${s.nome}</span>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    suggestionBoxElement.querySelectorAll('.suggestion-item').forEach(item => {
+                        item.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const ticker = item.dataset.ticker;
+                            router.navigate(`/${ticker}`);
+                            suggestionBoxElement.classList.add('hidden');
+                        });
+                    });
+
+                    suggestionBoxElement.classList.remove('hidden');
+                } else {
+                    suggestionBoxElement.classList.add('hidden');
+                }
+            }, 300);
+        }
+
+        // Função para mostrar sugestões específicas do comparador
+        async function mostrarSugestoesComparador(inputElement, suggestionBoxElement) {
+            const termo = inputElement.value.toLowerCase();
+            clearTimeout(debounceTimer);
+
+            if (termo.length < 1) {
+                suggestionBoxElement.classList.add('hidden');
+                return;
+            }
+
+            debounceTimer = setTimeout(async () => {
+                if (listaAtivosCompleta.length === 0) {
+                    try {
+                        const response = await fetch(`${apiUrl}/api/ativos/lista`);
+                        listaAtivosCompleta = await response.json();
+                    } catch (error) {
+                        console.error('Erro ao carregar lista de ativos:', error);
+                    }
+                }
+
+                const sugestoes = listaAtivosCompleta.filter(ativo => 
+                    ativo.ticker.toLowerCase().includes(termo) || ativo.nome.toLowerCase().includes(termo)
+                ).slice(0, 5);
+
+                if (sugestoes.length > 0) {
+                    suggestionBoxElement.innerHTML = sugestoes.map(s => `
+                        <div data-ticker="${s.ticker}" class="suggestion-item-comparador p-3 cursor-pointer hover:bg-zinc-700 transition-colors border-b border-zinc-800 last:border-b-0 flex items-center space-x-3">
+                            <div class="flex-shrink-0">${getLogoHTML(s.ticker, s.quoteType, 'w-6 h-6')}</div>
+                            <div>
+                                <span class="font-bold text-white">${s.ticker}</span>
+                                <span class="text-gray-400 text-sm">- ${s.nome}</span>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    suggestionBoxElement.querySelectorAll('.suggestion-item-comparador').forEach(item => {
+                        item.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            inputElement.value = item.dataset.ticker;
+                            suggestionBoxElement.classList.add('hidden');
+                            // NÃO navega para o ativo, apenas preenche o campo
+                        });
+                    });
+
+                    suggestionBoxElement.classList.remove('hidden');
+                } else {
+                    suggestionBoxElement.classList.add('hidden');
+                }
+            }, 300);
+        }
         
+        // Função para renderizar página inicial
         function renderizarPaginaInicial(event) {
              if(event) event.preventDefault();
             mainContainer.innerHTML = `
                 <div class="relative z-10 text-center py-16 md:py-21 fade-in-up">
-                    <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-4 leading-tight">
+                    <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-4 leading-tight">
                         Análise de Ativos e <span class="text-amber-400"> Indicadores Financeiros</span>
                     </h1>
                     <p class="text-lg text-gray-400 mb-10 max-w-3xl mx-auto">
                         Dados, gráficos e indicadores para tomar as melhores decisões de investimento no mercado financeiro.
                     </p>
                     <div class="relative max-w-xl mx-auto">
-                        <input type="text" id="heroSearchInput" placeholder="Buscar por nome ou ticker... (ex: PETR4, BOVA11, bitcoin)" class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-4 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all text-lg" autocomplete="off">
+                        <input type="text" id="heroSearchInput" placeholder="Buscar (ex: PETR4, BOVA11, Bitcoin)" class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-4 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all text-lg" autocomplete="off">
                         <button id="heroSearchButton" class="absolute inset-y-0 right-0 flex items-center pr-5 text-gray-400 hover:text-amber-400 transition-colors">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </button>
@@ -253,75 +422,41 @@
                     <div class="flex justify-center items-center p-8"><div class="loader border-4 border-zinc-800 rounded-full w-12 h-12"></div></div>
                 </div>
             `;
+
             const searchInput = document.getElementById('heroSearchInput');
             const searchButton = document.getElementById('heroSearchButton');
+            const suggestionBox = document.getElementById('suggestion-box');
 
-            searchInput.addEventListener('input', (e) => mostrarSugestoes(e.target, document.getElementById('suggestion-box')));
-            searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarAtivo(e.target.value); });
-            searchButton.addEventListener('click', () => { buscarAtivo(searchInput.value); });
+            searchInput.addEventListener('input', () => mostrarSugestoes(searchInput, suggestionBox));
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const termo = searchInput.value.trim();
+                    if (termo) {
+                        router.navigate(`/${termo.toUpperCase()}`);
+                    }
+                }
+            });
+
+            searchButton.addEventListener('click', () => {
+                const termo = searchInput.value.trim();
+                if (termo) {
+                    router.navigate(`/${termo.toUpperCase()}`);
+                }
+            });
+
+            // Esconde sugestões ao clicar fora
             document.addEventListener('click', (e) => {
-                const suggestionBox = document.getElementById('suggestion-box');
-                const searchContainer = document.querySelector('.relative.max-w-xl.mx-auto');
-                if (suggestionBox && searchContainer && !searchContainer.contains(e.target)) {
+                if (!searchInput.contains(e.target) && !suggestionBox.contains(e.target)) {
                     suggestionBox.classList.add('hidden');
                 }
             });
 
-            carregarDadosPaginaInicial();
+            carregarDadosHomepage();
         }
 
-        function renderizarRankings(titulo, ativos, corBorda, corTexto, tipoRanking) {
-            let cardsHTML = '<div class="text-center p-4 text-gray-500">Nenhum dado para exibir.</div>';
-            if (ativos && ativos.length > 0) {
-                cardsHTML = ativos.map((ativo, index) => `
-                    <div onclick="buscarAtivo('${ativo.ticker}')" class="bg-zinc-900/70 p-4 rounded-lg flex items-center fade-in-up cursor-pointer hover:bg-zinc-800 transition-colors" style="--animation-delay: ${index * 100}ms;">
-                        <div class="mr-3 flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-8 h-8')}</div>
-                        <div class="flex-1 flex justify-between items-center">
-                            <div>
-                                <span class="font-bold text-lg text-white">${ativo.ticker}</span>
-                                <p class="text-sm text-gray-400">${ativo.preco}</p>
-                            </div>
-                            <span class="font-semibold text-lg ${corTexto} flex items-center">
-                                ${ativo.eh_positivo ? iconUp : iconDown}
-                                ${ativo.variacao}
-                            </span>
-                        </div>
-                    </div>
-                `).join('');
-            }
-            return `<div class="card-background p-6 flex flex-col h-full">
-                        <h3 class="text-xl font-bold mb-5 text-white border-l-4 ${corBorda} pl-4">${titulo}</h3>
-                        <div class="grid grid-cols-1 gap-4 flex-grow">${cardsHTML}</div>
-                        <button onclick="mostrarRankingCompleto('${tipoRanking}', '${titulo}')" class="mt-4 text-center text-amber-400 hover:text-amber-300 font-semibold py-2 rounded-lg transition-colors">Ver mais</button>
-                    </div>`;
-        }
-        
-        function renderizarRankingCustom(titulo, ativos, corBorda, corTexto, tipoRanking, valorLabel) {
-            let cardsHTML = '<div class="text-center p-4 text-gray-500">Nenhum dado para exibir.</div>';
-            if (ativos && ativos.length > 0) {
-                cardsHTML = ativos.map((ativo, index) => `
-                    <div onclick="buscarAtivo('${ativo.ticker}')" class="bg-zinc-900/70 p-4 rounded-lg flex items-center fade-in-up cursor-pointer hover:bg-zinc-800 transition-colors" style="--animation-delay: ${index * 100}ms;">
-                        <div class="mr-3 flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-8 h-8')}</div>
-                        <div class="flex-1 flex justify-between items-center">
-                            <div>
-                                <span class="font-bold text-lg text-white">${ativo.ticker}</span>
-                                <p class="text-sm text-gray-400">${ativo.preco}</p>
-                            </div>
-                            <span class="font-semibold text-lg ${corTexto}">
-                                ${ativo[valorLabel]}
-                            </span>
-                        </div>
-                    </div>
-                `).join('');
-            }
-            return `<div class="card-background p-6 flex flex-col h-full">
-                        <h3 class="text-xl font-bold mb-5 text-white border-l-4 ${corBorda} pl-4">${titulo}</h3>
-                        <div class="grid grid-cols-1 gap-4 flex-grow">${cardsHTML}</div>
-                        <button onclick="mostrarRankingCompleto('${tipoRanking}', '${titulo}')" class="mt-4 text-center text-amber-400 hover:text-amber-300 font-semibold py-2 rounded-lg transition-colors">Ver mais</button>
-                    </div>`;
-        }
-        
-        function renderizarComparador(tipo, event) {
+        // Função para renderizar comparador
+        function renderizarComparador(tipo = 'acoes', event) {
             if(event) event.preventDefault();
             mainContainer.innerHTML = `
                 <div class="text-center py-12 fade-in-up">
@@ -349,8 +484,30 @@
             const input2 = document.getElementById('comparadorInput2');
             const suggestionBox2 = document.getElementById('suggestion-box-2');
 
-            input1.addEventListener('input', () => mostrarSugestoes(input1, suggestionBox1));
-            input2.addEventListener('input', () => mostrarSugestoes(input2, suggestionBox2));
+            // Usa a função específica do comparador para sugestões
+            input1.addEventListener('input', () => mostrarSugestoesComparador(input1, suggestionBox1));
+            input2.addEventListener('input', () => mostrarSugestoesComparador(input2, suggestionBox2));
+            
+            // Permite busca com Enter
+            input1.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    suggestionBox1.classList.add('hidden');
+                    if (input1.value.trim() && input2.value.trim()) {
+                        buscarECompararAtivos();
+                    }
+                }
+            });
+            
+            input2.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    suggestionBox2.classList.add('hidden');
+                    if (input1.value.trim() && input2.value.trim()) {
+                        buscarECompararAtivos();
+                    }
+                }
+            });
             
             // Esconder sugestões quando clicar fora
             document.addEventListener('click', (e) => {
@@ -365,16 +522,329 @@
             document.getElementById('compareBtn').addEventListener('click', buscarECompararAtivos);
         }
 
-        function renderizarSimulador(tipo, event) {
-            if(event) event.preventDefault();
+        // Função para renderizar página de notícias
+        function renderizarPaginaNoticias() {
             mainContainer.innerHTML = `
-                <div class="text-center py-20 fade-in-up">
-                    <h1 class="text-4xl font-bold text-white mb-4">Simulador de Carteira</h1>
-                    <p class="text-lg text-gray-400">Funcionalidade de Simulador para ${tipo === 'fiis' ? 'Fundos' : 'Ações'} em desenvolvimento.</p>
+                <div class="fade-in-up">
+                    <div class="text-center mb-12">
+                        <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Notícias do Mercado</h1>
+                        <p class="text-lg text-gray-400">Fique por dentro das últimas novidades do mercado financeiro</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="card-background card-hover p-6">
+                            <div class="h-48 bg-zinc-800 rounded-lg mb-4 flex items-center justify-center">
+                                <span class="text-gray-500">Imagem da notícia</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-white mb-2">Mercado em alta nesta semana</h3>
+                            <p class="text-gray-400 mb-4">Principais índices registram ganhos significativos com otimismo dos investidores...</p>
+                            <span class="text-amber-400 text-sm">Há 2 horas</span>
+                        </div>
+                        
+                        <div class="card-background card-hover p-6">
+                            <div class="h-48 bg-zinc-800 rounded-lg mb-4 flex items-center justify-center">
+                                <span class="text-gray-500">Imagem da notícia</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-white mb-2">Petrobras anuncia novos investimentos</h3>
+                            <p class="text-gray-400 mb-4">Empresa divulga plano estratégico para os próximos anos com foco em sustentabilidade...</p>
+                            <span class="text-amber-400 text-sm">Há 4 horas</span>
+                        </div>
+                        
+                        <div class="card-background card-hover p-6">
+                            <div class="h-48 bg-zinc-800 rounded-lg mb-4 flex items-center justify-center">
+                                <span class="text-gray-500">Imagem da notícia</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-white mb-2">Bitcoin atinge nova máxima</h3>
+                            <p class="text-gray-400 mb-4">Criptomoeda registra valorização expressiva impulsionada por fatores macroeconômicos...</p>
+                            <span class="text-amber-400 text-sm">Há 6 horas</span>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-12">
+                        <p class="text-gray-500">Funcionalidade de notícias em desenvolvimento</p>
+                    </div>
                 </div>
             `;
         }
 
+        // Sistema de Lazy Loading otimizado
+        let homepageDataCache = null;
+        let isLoadingHomepage = false;
+
+        // Função para carregar dados da homepage com lazy loading
+        async function carregarDadosHomepage() {
+            const homepageContent = document.getElementById('homepage-content');
+            
+            // Se já está carregando, não faz nova requisição
+            if (isLoadingHomepage) return;
+            
+            // Se já tem dados em cache, usa eles
+            if (homepageDataCache) {
+                renderizarHomepageComCache();
+                return;
+            }
+            
+            isLoadingHomepage = true;
+            
+            try {
+                // Carrega apenas os dados essenciais primeiro
+                const response = await fetch(`${apiUrl}/api/homepage/essencial`);
+                let data;
+                
+                if (response.ok) {
+                    data = await response.json();
+                } else {
+                    // Fallback para API completa se a essencial não existir
+                    const fullResponse = await fetch(`${apiUrl}/api/homepage`);
+                    data = await fullResponse.json();
+                }
+                
+                homepageDataCache = data;
+                renderizarHomepageComCache();
+                
+                // Carrega dados adicionais em background
+                setTimeout(() => carregarDadosAdicionais(), 1000);
+
+            } catch (error) {
+                console.error('Erro ao carregar homepage:', error);
+                homepageContent.innerHTML = '<p class="text-red-500 text-center">Erro ao carregar dados da homepage. Tente novamente mais tarde.</p>';
+            } finally {
+                isLoadingHomepage = false;
+            }
+        }
+
+        function renderizarHomepageComCache() {
+            const homepageContent = document.getElementById('homepage-content');
+            const data = homepageDataCache;
+            
+            // Renderiza apenas os primeiros 4 ativos populares
+            const ativosIniciais = data.ativos_populares.slice(0, 4);
+            const ativosRestantes = data.ativos_populares.slice(4);
+            
+            let homepageHTML = `
+                <section class="mb-12 fade-in-up" style="--animation-delay: 0ms;">
+                    <h2 class="text-3xl font-bold text-white mb-6">Ativos Populares</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="popular-assets-container">
+                        ${ativosIniciais.map(ativo => renderizarCardAtivo(ativo)).join('')}
+                    </div>
+                    ${ativosRestantes.length > 0 ? `
+                        <div id="more-assets" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                            ${ativosRestantes.map(ativo => renderizarSkeletonAtivo()).join('')}
+                        </div>
+                        <div class="text-center mt-6">
+                            <button id="load-more-assets" class="bg-amber-500 hover:bg-amber-600 text-black font-semibold py-2 px-6 rounded-full transition-colors">
+                                Ver Mais Ativos
+                            </button>
+                        </div>
+                    ` : ''}
+                </section>
+
+                <section class="mb-12 fade-in-up" style="--animation-delay: 100ms;">
+                    <h2 class="text-3xl font-bold text-white mb-6">Rankings do Dia</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8" id="rankings-container">
+                        ${renderizarRankingLazy('Maiores Altas', data.maiores_altas.slice(0, 3), 'altas')}
+                        ${renderizarRankingLazy('Maiores Baixas', data.maiores_baixas.slice(0, 3), 'baixas')}
+                        ${renderizarRankingLazy('Maiores Dividend Yields', data.maiores_dividend_yields.slice(0, 3), 'dividend-yields')}
+                    </div>
+                </section>
+
+                <section class="mb-12 fade-in-up" style="--animation-delay: 200ms;">
+                    <h2 class="text-3xl font-bold text-white mb-6">Cotações de Moedas e Criptos</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        ${renderizarMoeda(data.bitcoin, 'btc')}
+                        ${renderizarMoeda(data.ethereum, 'eth')}
+                        ${renderizarMoeda(data.dolar, 'usd')}
+                        ${renderizarMoeda(data.euro, 'eur')}
+                    </div>
+                </section>
+            `;
+            
+            homepageContent.innerHTML = homepageHTML;
+            
+            // Adiciona event listener para "Ver Mais"
+            const loadMoreBtn = document.getElementById('load-more-assets');
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', () => carregarMaisAtivos());
+            }
+        }
+
+        function renderizarCardAtivo(ativo) {
+            return `
+                <a href="/${ativo.ticker}" class="card-background p-4 rounded-lg flex items-center space-x-4 card-hover">
+                    <div class="flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType)}</div>
+                    <div>
+                        <p class="text-lg font-bold text-white">${ativo.ticker}</p>
+                        <p class="text-sm text-gray-400 truncate">${ativo.nome}</p>
+                    </div>
+                    <div class="ml-auto text-right">
+                        <p class="text-lg font-bold text-white">${ativo.preco_atual}</p>
+                        <p class="text-sm ${ativo.eh_positivo ? 'text-green-400' : 'text-red-400'}">${ativo.eh_positivo ? '+' : ''}${ativo.variacao_dia_pct}</p>
+                    </div>
+                </a>
+            `;
+        }
+
+        function renderizarSkeletonAtivo() {
+            return `
+                <div class="card-background p-4 rounded-lg flex items-center space-x-4 animate-pulse">
+                    <div class="flex-shrink-0 w-10 h-10 bg-zinc-700 rounded-full"></div>
+                    <div class="flex-1">
+                        <div class="h-4 bg-zinc-700 rounded mb-2"></div>
+                        <div class="h-3 bg-zinc-800 rounded w-3/4"></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="h-4 bg-zinc-700 rounded mb-2 w-16"></div>
+                        <div class="h-3 bg-zinc-800 rounded w-12"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderizarRankingLazy(titulo, dados, tipo) {
+            return `
+                <div class="card-background p-6 rounded-lg">
+                    <h3 class="text-xl font-bold text-amber-400 mb-4">${titulo}</h3>
+                    <div class="space-y-3">
+                        ${dados.map(item => `
+                            <a href="/${item.ticker}" class="flex items-center justify-between hover:bg-zinc-800 p-2 rounded-md transition-colors">
+                                <div class="flex items-center space-x-3">
+                                    ${getLogoHTML(item.ticker, item.quoteType, 'w-7 h-7')}
+                                    <div>
+                                        <p class="font-semibold text-white">${item.ticker}</p>
+                                        <p class="text-xs text-gray-400">${item.nome}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold text-white">${item.preco_atual}</p>
+                                    <p class="text-sm ${item.eh_positivo ? 'text-green-400' : 'text-red-400'}">${item.eh_positivo ? '+' : ''}${item.variacao_dia_pct}</p>
+                                </div>
+                            </a>
+                        `).join('')}
+                    </div>
+                    <div class="text-center mt-6">
+                        <button onclick="carregarRankingCompleto('${tipo}')" class="text-amber-400 hover:text-amber-500 font-semibold transition-colors">Ver mais</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function carregarMaisAtivos() {
+            const moreAssetsDiv = document.getElementById('more-assets');
+            const loadMoreBtn = document.getElementById('load-more-assets');
+            
+            if (!homepageDataCache) return;
+            
+            loadMoreBtn.textContent = 'Carregando...';
+            loadMoreBtn.disabled = true;
+            
+            // Simula carregamento
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const ativosRestantes = homepageDataCache.ativos_populares.slice(4);
+            moreAssetsDiv.innerHTML = ativosRestantes.map(ativo => renderizarCardAtivo(ativo)).join('');
+            moreAssetsDiv.classList.remove('hidden');
+            
+            loadMoreBtn.style.display = 'none';
+        }
+
+        async function carregarDadosAdicionais() {
+            // Carrega dados adicionais em background para melhorar a experiência
+            try {
+                const response = await fetch(`${apiUrl}/api/homepage/completo`);
+                if (response.ok) {
+                    const dadosCompletos = await response.json();
+                    // Atualiza cache com dados completos
+                    homepageDataCache = { ...homepageDataCache, ...dadosCompletos };
+                }
+            } catch (error) {
+                console.log('Dados adicionais não disponíveis:', error);
+            }
+        }
+
+        async function carregarRankingCompleto(tipo) {
+            // Implementa carregamento do ranking completo
+            console.log(`Carregando ranking completo: ${tipo}`);
+            // Aqui você pode implementar um modal ou navegação para página de ranking
+        }
+
+        function renderizarRanking(titulo, dados, tipo) {
+            return `
+                <div class="card-background p-6 rounded-lg">
+                    <h3 class="text-xl font-bold text-amber-400 mb-4">${titulo}</h3>
+                    <div class="space-y-3">
+                        ${dados.map(item => `
+                            <a href="/${item.ticker}" class="flex items-center justify-between hover:bg-zinc-800 p-2 rounded-md transition-colors">
+                                <div class="flex items-center space-x-3">
+                                    ${getLogoHTML(item.ticker, item.quoteType, 'w-7 h-7')}
+                                    <div>
+                                        <p class="font-semibold text-white">${item.ticker}</p>
+                                        <p class="text-xs text-gray-400">${item.nome}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold text-white">${item.preco_atual}</p>
+                                    <p class="text-sm ${item.eh_positivo ? 'text-green-400' : 'text-red-400'}">${item.eh_positivo ? '+' : ''}${item.variacao_dia_pct}</p>
+                                </div>
+                            </a>
+                        `).join('')}
+                    </div>
+                    <div class="text-center mt-6">
+                        <a href="/ranking/${tipo}" class="text-amber-400 hover:text-amber-500 font-semibold transition-colors">Ver mais</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderizarMoeda(moeda, tipo) {
+            const corVariacao = moeda.eh_positivo ? 'text-green-400' : 'text-red-400';
+            const sinalVariacao = moeda.eh_positivo ? '+' : '';
+            let logoPath = `flags/${tipo}.png`;
+            if (tipo === 'btc' || tipo === 'eth') {
+                logoPath = `crypto_logos/${tipo}.png`;
+            }
+
+            return `
+                <a href="/moeda/${tipo}" class="card-background p-4 rounded-lg flex items-center space-x-4 card-hover">
+                    <div class="flex-shrink-0">
+                        <img src="${logoPath}" alt="${moeda.nome} Logo" class="w-8 h-8 rounded-full">
+                    </div>
+                    <div>
+                        <p class="text-lg font-bold text-white">${moeda.nome}</p>
+                        <p class="text-sm text-gray-400">${moeda.simbolo}</p>
+                    </div>
+                    <div class="ml-auto text-right">
+                        <p class="text-lg font-bold text-white">${moeda.preco_brl}</p>
+                        <p class="text-sm ${corVariacao}">${sinalVariacao}${moeda.variacao_dia_pct}</p>
+                    </div>
+                </a>
+            `;
+        }
+
+        // Função para buscar ativo
+        async function buscarAtivo(ticker, periodo = '1y') {
+            mainContainer.innerHTML = `
+                <div class="flex justify-center items-center py-20">
+                    <div class="text-center">
+                        <div class="loader border-4 border-zinc-800 rounded-full w-12 h-12 mx-auto mb-4"></div>
+                        <p class="text-gray-400">Analisando ${ticker}...</p>
+                    </div>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`${apiUrl}/api/ativo/${ticker}?periodo=${periodo}`);
+                const ativo = await response.json();
+                renderizarPaginaAtivo(ativo);
+                if (ativo.historico_grafico) {
+                    setTimeout(() => inicializarGrafico(ativo.historico_grafico, periodo, 'priceChart'), 100);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar ativo:', error);
+                mainContainer.innerHTML = `<p class="text-red-500 text-center py-20">Erro ao carregar dados do ativo ${ticker}. Tente novamente mais tarde.</p>`;
+            }
+        }
+
+        // Função para renderizar página do ativo
         function renderizarPaginaAtivo(ativo) {
             currentTicker = ativo.ticker;
             const corVariacao = ativo.eh_positivo ? 'text-green-400' : 'text-red-400';
@@ -383,386 +853,106 @@
             let secoesHTML = '';
             if(ativo.secoes && ativo.secoes.length > 0) {
                 secoesHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
                     <div class="space-y-6">
                         <div>
                             <h4 class="text-lg font-bold text-amber-400 mb-2">${(ativo.secoes[0] || { titulo: 'Valuation' }).titulo}</h4>
                             ${(ativo.secoes[0] || { indicadores: [] }).indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
                         </div>
+                        ${ativo.secoes[2] ? `
                         <div>
-                            <h4 class="text-lg font-bold text-amber-400 mb-2">${(ativo.secoes[2] || { titulo: 'Eficiência' }).titulo}</h4>
-                            ${(ativo.secoes[2] || { indicadores: [] }).indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
+                            <h4 class="text-lg font-bold text-amber-400 mb-2">${ativo.secoes[2].titulo}</h4>
+                            ${ativo.secoes[2].indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
                         </div>
+                        ` : ''}
                     </div>
                     <div class="space-y-6">
+                        ${ativo.secoes[1] ? `
                         <div>
-                            <h4 class="text-lg font-bold text-amber-400 mb-2">${(ativo.secoes[1] || { titulo: 'Endividamento' }).titulo}</h4>
-                            ${(ativo.secoes[1] || { indicadores: [] }).indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
+                            <h4 class="text-lg font-bold text-amber-400 mb-2">${ativo.secoes[1].titulo}</h4>
+                            ${ativo.secoes[1].indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
                         </div>
+                        ` : ''}
+                        ${ativo.secoes[3] ? `
                         <div>
-                            <h4 class="text-lg font-bold text-amber-400 mb-2">${(ativo.secoes[3] || { titulo: 'Rentabilidade' }).titulo}</h4>
-                            ${(ativo.secoes[3] || { indicadores: [] }).indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
+                            <h4 class="text-lg font-bold text-amber-400 mb-2">${ativo.secoes[3].titulo}</h4>
+                            ${ativo.secoes[3].indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
                         </div>
+                        ` : ''}
                     </div>
                 </div>
                 `;
             }
-            
-            const periodosGrafico = ['1D', '5D', '1M', '3M', '6M', '1Y', '5Y', 'MAX'];
-            const botoesGraficoHTML = periodosGrafico.map(p => 
-                `<button onclick="mudarPeriodoGrafico('${p.toLowerCase()}')" class="px-3 py-1 text-sm font-medium text-gray-400 rounded-md hover:bg-zinc-700 hover:text-amber-400 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400" data-periodo="${p.toLowerCase()}">${p}</button>`
-            ).join('');
 
             mainContainer.innerHTML = `
                 <div class="fade-in-up">
-                    <div class="card-background p-8 mb-8 flex flex-col md:flex-row justify-between md:items-center">
-                        <div class="flex items-center space-x-6">
-                            <div class="block flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-16 h-16 md:w-20 md:h-20', 'rounded-xl')}</div>
-                            <div>
-                                <p class="text-2xl text-amber-400 font-mono mb-1">${ativo.ticker}</p>
-                                <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white break-words">${ativo.nome}</h1>
+                    <div class="card-background p-4 md:p-6 mb-8">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                            <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                                ${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-12 h-12 md:w-16 md:h-16', 'rounded-xl')}
+                                <div>
+                                    <h1 class="text-2xl md:text-3xl font-bold text-white">${ativo.ticker}</h1>
+                                    <p class="text-gray-400 text-sm md:text-base">${ativo.nome}</p>
+                                    <p class="text-gray-500 text-xs md:text-sm">${ativo.tipo_ativo}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl md:text-3xl font-bold text-white">${ativo.preco_atual}</p>
+                                <p class="text-lg md:text-xl font-semibold ${corVariacao}">${sinalVariacao}${ativo.variacao_dia_abs} (${ativo.variacao_dia_pct})</p>
                             </div>
                         </div>
-                        <div class="text-left md:text-right mt-6 md:mt-0 flex-shrink-0">
-                            <p class="text-5xl lg:text-6xl font-bold text-white">${ativo.preco_atual}</p>
-                            <p class="text-2xl font-semibold ${corVariacao} mt-1">${sinalVariacao}${ativo.variacao_dia_pct} (${sinalVariacao}${ativo.variacao_dia_abs})</p>
-                        </div>
+                        ${secoesHTML}
                     </div>
-                    ${secoesHTML ? `<div class="card-background p-6 mb-8">${secoesHTML}</div>` : ''}
-                    <div class="card-background p-6 fade-in-up" style="--animation-delay: 500ms;">
-                        <div class="flex flex-wrap justify-between items-center mb-4">
-                             <h3 class="text-2xl font-bold text-white">Histórico de Preços</h3>
-                             <div class="flex items-center space-x-2 bg-zinc-900/70 p-1 rounded-lg">${botoesGraficoHTML}</div>
+                    <div class="card-background p-4 md:p-6 fade-in-up" style="--animation-delay: 200ms;">
+                        <div class="flex flex-col space-y-4 mb-6">
+                            <h3 class="text-xl md:text-2xl font-bold text-white">Histórico de Preços</h3>
+                            <div class="flex flex-wrap gap-2 justify-center md:justify-start period-buttons">
+                                ${['1D', '5D', '1M', '3M', '6M', '1Y', '5Y', 'MAX'].map(p => 
+                                    `<button onclick="mudarPeriodoGrafico('${p.toLowerCase()}')" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors text-gray-400 hover:bg-zinc-700 hover:text-amber-400 whitespace-nowrap" data-periodo="${p.toLowerCase()}">${p}</button>`
+                                ).join('')}
+                            </div>
                         </div>
-                        <div class="relative h-96 md:h-[500px]"><canvas id="ativoChart"></canvas></div>
+                        <div class="chart-container">
+                            <canvas id="priceChart" class="w-full h-full"></canvas>
+                        </div>
                     </div>
                 </div>
             `;
-            if (ativo.historico_grafico) {
-                setTimeout(() => inicializarGrafico(ativo.historico_grafico, '1y', 'ativoChart'), 100);
-            }
-        }
-        
-        async function carregarDadosPaginaInicial() {
-            try {
-                const response = await fetch(`${apiUrl}/api/homepage/destaques`);
-                if(!response.ok) throw new Error('Falha na resposta da API');
-                const data = await response.json();
-                
-                const maisBuscadasHTML = data.mais_buscadas.map((ativo, index) => `
-                    <div onclick="buscarAtivo('${ativo.ticker}')" class="card-background card-hover p-4 cursor-pointer fade-in-up" style="--animation-delay: ${index * 100}ms;">
-                        <div class="flex items-center space-x-3">
-                            <div class="flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-10 h-10')}</div>
-                            <div class="flex-1 flex justify-between items-center min-w-0">
-                                <div>
-                                    <p class="font-bold text-lg text-white truncate">${ativo.ticker}</p>
-                                    <p class="text-sm text-gray-400 truncate">${ativo.nome}</p>
-                                </div>
-                                <div class="text-right ml-2">
-                                    <p class="font-semibold ${ativo.eh_positivo ? 'text-green-400' : 'text-red-400'}">${ativo.variacao}</p>
-                                    <p class="text-gray-300">${ativo.preco}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-                
-                let mercadoHTML = '';
-                if (data.dados_mercado && data.dados_mercado.length > 0) {
-                    mercadoHTML = `
-                    <div class="mb-16">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    `;
-                    data.dados_mercado.forEach((ativo, index) => {
-                        const corVariacao = ativo.eh_positivo ? 'text-green-400' : 'text-red-400';
-                        const precoSecundario = ativo.preco_usd ? `<p class="text-md text-gray-400">${ativo.preco_usd}</p>` : '';
-                        
-                        mercadoHTML += `
-                            <div onclick="buscarAtivo('${ativo.ticker_busca}')" class="card-background card-hover p-4 cursor-pointer fade-in-up" style="--animation-delay: ${400 + index * 100}ms;">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center space-x-3">
-                                        ${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-10 h-10')}
-                                        <div>
-                                            <p class="font-bold text-white">${ativo.nome}</p>
-                                            <p class="text-sm font-semibold ${corVariacao}">${ativo.variacao}</p>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-xl font-bold text-white">${ativo.preco_brl}</p>
-                                        ${precoSecundario}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    mercadoHTML += `
-                        </div>
-                    </div>
-                    `;
-                }
-
-                const altasHTML = renderizarRankings('Maiores Altas', data.maiores_altas, 'border-green-400', 'text-green-400', 'altas');
-                const baixasHTML = renderizarRankings('Maiores Baixas', data.maiores_baixas, 'border-red-400', 'text-red-400', 'baixas');
-                const dividendosHTML = renderizarRankingCustom('Maiores Dividend Yields', data.maiores_dy, 'border-blue-400', 'text-blue-400', 'dy', 'dy_formatado');
-                const marketCapHTML = renderizarRankingCustom('Maior Valor de Mercado', data.maiores_market_cap, 'border-purple-400', 'text-purple-400', 'market_cap', 'market_cap_formatado');
-
-                document.getElementById('homepage-content').innerHTML = `
-                    <div class="mb-16">
-                        <h2 class="text-3xl font-bold text-white mb-6 fade-in-up">Ativos Populares</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">${maisBuscadasHTML}</div>
-                    </div>
-                    <div class="mb-16">
-                        <h2 class="text-3xl font-bold text-white mb-6 fade-in-up" style="--animation-delay: 200ms;">Rankings do Dia</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div class="fade-in-up" style="--animation-delay: 300ms;">${altasHTML}</div>
-                            <div class="fade-in-up" style="--animation-delay: 400ms;">${baixasHTML}</div>
-                        </div>
-                    </div>
-                    ${mercadoHTML}
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div class="fade-in-up" style="--animation-delay: 500ms;">${dividendosHTML}</div>
-                        <div class="fade-in-up" style="--animation-delay: 600ms;">${marketCapHTML}</div>
-                    </div>
-                `;
-            } catch(error) {
-                console.error("Erro ao carregar dados da página inicial:", error);
-                document.getElementById('homepage-content').innerHTML = '<p class="text-center text-red-400 text-lg">Não foi possível carregar os destaques.</p>';
-            }
         }
 
-        async function buscarAtivo(termo, periodo = '1y') {
-            const termoBusca = termo ? termo.trim() : '';
-            if (!termoBusca) return;
-
-            if(periodo === '1y') {
-                 mainContainer.innerHTML = `<div class="flex justify-center items-center p-16"><div class="loader border-4 border-zinc-800 rounded-full w-12 h-12"></div><p class="ml-4 text-gray-400 text-lg">Analisando ${termoBusca.toUpperCase()}...</p></div>`;
-                 window.scrollTo(0, 0);
-            }
-
-            try {
-                const response = await fetch(`${apiUrl}/api/pesquisa/${termoBusca}?periodo=${periodo}`);
-                const data = await response.json();
-                if (response.ok) {
-                    if (data.tipo === 'lista_opcoes') {
-                        buscarAtivo(data.dados[0].ticker);
-                    } else if (data.tipo === 'dados_completos') {
-                        if(periodo !== '1y') {
-                            atualizarGrafico(data.dados.historico_grafico, periodo);
-                        } else {
-                            renderizarPaginaAtivo(data.dados);
-                        }
-                    }
-                } else {
-                     mainContainer.innerHTML = `<div class="text-center py-20"><p class="text-2xl text-red-400">${data.erro || 'Ativo não encontrado.'}</p></div>`;
-                }
-            } catch (error) {
-                mainContainer.innerHTML = `<div class="text-center py-20"><p class="text-2xl text-red-400">Erro de conexão com o servidor.</p></div>`;
-            }
-        }
-        
-        function mostrarSugestoes(inputElement, suggestionBoxElement) {
-            const termo = inputElement.value.toLowerCase();
-            
-            if (termo.length < 1) {
-                suggestionBoxElement.classList.add('hidden');
-                return;
-            }
-            
-            // Usa dados locais se a API não estiver disponível
-            let sugestoes = [];
-            if (listaAtivosCompleta && listaAtivosCompleta.length > 0) {
-                sugestoes = listaAtivosCompleta.filter(ativo => 
-                    ativo.ticker.toLowerCase().includes(termo) || ativo.nome.toLowerCase().includes(termo)
-                ).slice(0, 5);
-            } else if (window.DADOS_ATIVOS) {
-                sugestoes = window.DADOS_ATIVOS.buscarSugestoes(termo);
-            }
-
-            if (sugestoes.length > 0) {
-                suggestionBoxElement.innerHTML = sugestoes.map(s => `
-                    <div data-ticker="${s.ticker}" class="suggestion-item p-3 cursor-pointer hover:bg-zinc-700 transition-colors border-b border-zinc-800 last:border-b-0 flex items-center space-x-3">
-                         <div class="flex-shrink-0">${getLogoHTML(s.ticker, s.tipo, 'w-6 h-6')}</div>
-                        <div>
-                            <span class="font-bold text-white">${s.ticker}</span>
-                            <span class="text-gray-400 text-sm">- ${s.nome}</span>
-                        </div>
-                    </div>
-                `).join('');
-
-                suggestionBoxElement.querySelectorAll('.suggestion-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        inputElement.value = item.dataset.ticker;
-                        suggestionBoxElement.classList.add('hidden');
-                        // Trigger busca automaticamente
-                        buscarAtivo(item.dataset.ticker);
-                    });
-                });
-
-                suggestionBoxElement.classList.remove('hidden');
-                suggestionBoxElement.style.zIndex = '9999';
-            } else {
-                suggestionBoxElement.classList.add('hidden');
-            }
-        }
-
-        async function carregarListaDeAtivos() {
-            try {
-                const response = await fetch(`${apiUrl}/api/ativos/lista`);
-                listaAtivosCompleta = await response.json();
-            } catch (e) {
-                console.error("Não foi possível carregar a lista de ativos para sugestões.");
-            }
-        }
-        
-        async function mostrarRankingCompleto(rankingType, titulo) {
-            const modal = document.getElementById('rankingModal');
-            const modalTitle = document.getElementById('modalTitle');
-            const modalContent = document.getElementById('modalContent');
-            
-            modalTitle.textContent = titulo;
-            modalContent.innerHTML = `<div class="flex justify-center items-center p-8"><div class="loader border-4 border-zinc-800 rounded-full w-8 h-8"></div></div>`;
-            modal.classList.remove('hidden');
-            
-            try {
-                const response = await fetch(`${apiUrl}/api/ranking/${rankingType}`);
-                const data = await response.json();
-                
-                let contentHTML = '<div class="grid grid-cols-1 gap-3">';
-                data.forEach((ativo, index) => {
-                    let valor;
-                    let corValor = '';
-                    switch(rankingType) {
-                        case 'altas': valor = `+${ativo.variacao}`; corValor = 'text-green-400'; break;
-                        case 'baixas': valor = ativo.variacao; corValor = 'text-red-400'; break;
-                        case 'dy': valor = ativo.dy_formatado; corValor = 'text-blue-400'; break;
-                        case 'market_cap': valor = ativo.market_cap_formatado; corValor = 'text-purple-400'; break;
-                    }
-
-                    contentHTML += `
-                        <div onclick="buscarAtivo('${ativo.ticker}')" class="bg-zinc-900/70 p-3 rounded-lg flex items-center cursor-pointer hover:bg-zinc-800 transition-colors">
-                            <span class="mr-4 text-gray-500 font-bold w-6">${index + 1}.</span>
-                            <div class="mr-3 flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-6 h-6')}</div>
-                            <div class="flex-1 flex justify-between items-center">
-                                <div><span class="font-bold text-white">${ativo.ticker}</span></div>
-                                <span class="font-semibold ${corValor}">${valor}</span>
-                            </div>
-                        </div>
-                    `;
-                });
-                contentHTML += '</div>';
-                modalContent.innerHTML = contentHTML;
-
-            } catch(e) {
-                modalContent.innerHTML = '<p class="text-red-400 text-center">Não foi possível carregar o ranking.</p>';
-            }
-        }
-
-        function inicializarModal() {
-            const modal = document.getElementById('rankingModal');
-            if (!modal) return;
-            const closeModalBtn = document.getElementById('closeModalBtn');
-            closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
-            modal.addEventListener('click', (e) => {
-                if(e.target === modal) {
-                    modal.classList.add('hidden');
-                }
-            });
-        }
-        
-        function mudarPeriodoGrafico(periodo) {
-            const ticker1 = document.getElementById('comparadorInput1')?.value;
-            const ticker2 = document.getElementById('comparadorInput2')?.value;
-
-            if (ticker1 && ticker2) { 
-                buscarECompararAtivos(periodo);
-            } else { 
-                buscarAtivo(currentTicker, periodo);
-            }
-        }
-
-        function atualizarGrafico(historico, periodo) {
-            if(!currentChart || !historico) return;
-            
-            const ehPositivo = historico.data.length > 1 ? historico.data[historico.data.length - 1] >= historico.data[0] : true;
-            const corLinha = ehPositivo ? '#22c55e' : '#ef4444';
-            const gradienteFundo = currentChart.ctx.createLinearGradient(0, 0, 0, currentChart.canvas.offsetHeight);
-            gradienteFundo.addColorStop(0, ehPositivo ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)');
-            gradienteFundo.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            
-            currentChart.data.labels = historico.labels;
-            currentChart.data.datasets[0].data = historico.data;
-            currentChart.data.datasets[0].borderColor = corLinha;
-            currentChart.data.datasets[0].backgroundColor = gradienteFundo;
-            
-            currentChart.update();
-            
-            document.querySelectorAll('[data-periodo]').forEach(btn => {
-                btn.classList.remove('bg-zinc-700', 'text-amber-400');
-                if(btn.dataset.periodo === periodo) {
-                    btn.classList.add('bg-zinc-700', 'text-amber-400');
-                }
-            });
-        }
-        
-        function inicializarGrafico(historico, periodoInicial, canvasId) {
-            if (currentChart) currentChart.destroy();
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            
-            currentChart = new Chart(ctx, {
-                type: 'line',
-                data: { labels: [], datasets: [{ label: 'Preço', data: [] }] },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: {
-                        x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yy' }, display: false },
-                        y: { ticks: { color: '#a1a1aa', font: { size: 12 } }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            enabled: true, mode: 'index', intersect: false,
-                            backgroundColor: '#18181b', titleColor: '#facc15', titleFont: { weight: 'bold', size: 14 },
-                            bodyColor: '#d4d4d8', bodyFont: { size: 12 }, borderColor: '#3f3f46',
-                            borderWidth: 1, padding: 12, caretSize: 8, cornerRadius: 8, displayColors: false,
-                            callbacks: { label: (ctx) => `Fechamento: R$ ${ctx.parsed.y.toFixed(2)}` }
-                        }
-                    },
-                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
-                }
-            });
-            atualizarGrafico(historico, periodoInicial);
-        }
-
-        // --- LÓGICA DO COMPARADOR ---
-        async function buscarECompararAtivos(periodo = '1y') {
-            const ticker1 = document.getElementById('comparadorInput1').value.trim();
-            const ticker2 = document.getElementById('comparadorInput2').value.trim();
-            const resultsDiv = document.getElementById('comparison-results');
+        // Função para comparar ativos
+        async function buscarECompararAtivos() {
+            const ticker1 = document.getElementById('comparadorInput1').value.toUpperCase();
+            const ticker2 = document.getElementById('comparadorInput2').value.toUpperCase();
 
             if (!ticker1 || !ticker2) {
-                resultsDiv.innerHTML = `<p class="text-center text-red-400">Por favor, selecione dois ativos para comparar.</p>`;
+                alert('Por favor, insira dois tickers para comparar.');
                 return;
             }
 
-            resultsDiv.innerHTML = `<div class="flex justify-center items-center p-16"><div class="loader border-4 border-zinc-800 rounded-full w-12 h-12"></div></div>`;
+            document.getElementById('comparison-results').innerHTML = `
+                <div class="flex justify-center items-center py-20">
+                    <div class="text-center">
+                        <div class="loader border-4 border-zinc-800 rounded-full w-12 h-12 mx-auto mb-4"></div>
+                        <p class="text-gray-400">Comparando ${ticker1} vs ${ticker2}...</p>
+                    </div>
+                </div>
+            `;
 
             try {
-                const response = await fetch(`${apiUrl}/api/comparar/${ticker1}/${ticker2}?periodo=${periodo}`);
+                const response = await fetch(`${apiUrl}/api/comparar/${ticker1}/${ticker2}`);
                 const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.erro || 'Erro ao buscar dados.');
-                }
+                renderizarResultadoComparacao(data, '1y');
                 
-                renderizarResultadoComparacao(data, periodo);
-
-            } catch(error) {
-                resultsDiv.innerHTML = `<p class="text-center text-red-400">${error.message}</p>`;
+                // Atualiza a URL para refletir a comparação
+                router.navigate(`/comparador/${ticker1.toLowerCase()}-${ticker2.toLowerCase()}`);
+            } catch (error) {
+                console.error('Erro ao comparar ativos:', error);
+                document.getElementById('comparison-results').innerHTML = '<p class="text-red-500 text-center">Erro ao comparar ativos. Verifique os tickers e tente novamente.</p>';
             }
         }
-        
+
+        // Função para renderizar resultado da comparação
         function renderizarResultadoComparacao(data, periodo) {
             const resultsDiv = document.getElementById('comparison-results');
             const { ativo1, ativo2, indicadores_comparativos, historico_normalizado } = data;
@@ -791,110 +981,223 @@
                 const winner2Class = item.winner === 2 ? 'text-green-400 font-bold' : 'text-white';
 
                 tabelaHTML += `
-                    <div class="grid grid-cols-3 items-center text-center py-3 border-b border-zinc-800">
-                        <span class="${winner1Class}">${item.valor1}</span>
-                        <span class="text-gray-400 text-sm">${item.label}</span>
-                        <span class="${winner2Class}">${item.valor2}</span>
+                    <div class="grid grid-cols-3 items-center text-center py-3 border-b border-zinc-800 comparison-table">
+                        <span class="${winner1Class} text-sm md:text-base">${item.valor1}</span>
+                        <span class="text-gray-400 text-xs md:text-sm">${item.label}</span>
+                        <span class="${winner2Class} text-sm md:text-base">${item.valor2}</span>
                     </div>
                 `;
             });
             
-            const periodosGrafico = ['1M', '3M', '6M', '1Y', '5Y', 'MAX'];
-            const botoesGraficoHTML = periodosGrafico.map(p => 
-                `<button onclick="mudarPeriodoGrafico('${p.toLowerCase()}')" class="px-3 py-1 text-sm font-medium rounded-md transition-colors ${periodo === p.toLowerCase() ? 'bg-zinc-700 text-amber-400' : 'text-gray-400 hover:bg-zinc-700 hover:text-amber-400'}" data-periodo="${p.toLowerCase()}">${p}</button>`
-            ).join('');
-
             resultsDiv.innerHTML = `
-                <div class="card-background p-6 mb-8 fade-in-up">
+                <div class="card-background p-4 md:p-6 mb-8 fade-in-up">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                         ${header1}
                         ${header2}
                     </div>
-                    <div class="mt-8">${tabelaHTML}</div>
+                    <div class="mt-8 overflow-x-auto">${tabelaHTML}</div>
                 </div>
-                <div class="card-background p-6 fade-in-up" style="--animation-delay: 200ms;">
-                     <div class="flex flex-wrap justify-between items-center mb-4">
-                         <h3 class="text-2xl font-bold text-white">Performance Normalizada (Base 100)</h3>
-                         <div class="flex items-center space-x-2 bg-zinc-900/70 p-1 rounded-lg">${botoesGraficoHTML}</div>
+                <div class="card-background p-4 md:p-6 fade-in-up" style="--animation-delay: 200ms;">
+                    <div class="flex flex-col space-y-4 mb-6">
+                        <h3 class="text-xl md:text-2xl font-bold text-white">Performance Normalizada (Base 100)</h3>
+                        <div class="flex flex-wrap gap-2 justify-center md:justify-start period-buttons">
+                            ${['1M', '3M', '6M', '1Y', '5Y', 'MAX'].map(p => 
+                                `<button onclick="mudarPeriodoGrafico('${p.toLowerCase()}')" class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors text-gray-400 hover:bg-zinc-700 hover:text-amber-400 whitespace-nowrap" data-periodo="${p.toLowerCase()}">${p}</button>`
+                            ).join('')}
+                        </div>
                     </div>
-                    <div class="relative h-96 md:h-[500px]"><canvas id="comparativoChart"></canvas></div>
+                    <div class="chart-container">
+                        <canvas id="comparativoChart" class="w-full h-full"></canvas>
+                    </div>
                 </div>
             `;
             
             setTimeout(() => inicializarGraficoComparativo(historico_normalizado), 100);
         }
 
-        function inicializarGraficoComparativo(historico) {
-            if (currentChart) currentChart.destroy();
-            const canvas = document.getElementById('comparativoChart');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            
-            const datasets = Object.keys(historico.datasets).map((key, index) => {
-                const colors = ['#facc15', '#38bdf8']; // Amarelo e Azul
-                return {
-                    label: key,
-                    data: historico.datasets[key],
-                    borderColor: colors[index % colors.length],
-                    backgroundColor: 'transparent',
-                    pointRadius: 0,
-                    tension: 0.1
-                }
-            });
+        // Funções de gráficos
+        let priceChartInstance = null;
+        let comparativoChartInstance = null;
 
-            currentChart = new Chart(ctx, {
+        function inicializarGrafico(historico, periodoInicial, canvasId) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const labels = historico.map(item => new Date(item.data));
+            const data = historico.map(item => item.fechamento);
+
+            const chartConfig = {
                 type: 'line',
                 data: {
-                    labels: historico.labels,
-                    datasets: datasets
+                    labels: labels,
+                    datasets: [{
+                        label: 'Preço',
+                        data: data,
+                        borderColor: '#facc15',
+                        backgroundColor: 'rgba(250, 204, 21, 0.2)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        hoverRadius: 5,
+                        pointBackgroundColor: '#facc15',
+                    }]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: {
-                        x: { type: 'time', time: { unit: 'month', tooltipFormat: 'dd/MM/yy' }, grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#a1a1aa' } },
-                        y: { ticks: { color: '#a1a1aa', callback: (value) => `${value}` }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
                     },
                     plugins: {
-                        legend: { labels: { color: '#d4d4d8' } },
+                        legend: { display: false },
                         tooltip: {
-                            enabled: true, mode: 'index', intersect: false,
-                            backgroundColor: '#18181b', titleColor: '#facc15', titleFont: { weight: 'bold' },
-                            bodyColor: '#d4d4d8', borderColor: '#3f3f46', borderWidth: 1, padding: 12
+                            callbacks: {
+                                title: function(context) {
+                                    return new Date(context[0].label).toLocaleDateString('pt-BR');
+                                },
+                                label: function(context) {
+                                    return `Preço: R$ ${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
                         }
                     },
-                    interaction: { mode: 'index', axis: 'x', intersect: false }
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                tooltipFormat: 'dd/MM/yyyy',
+                                displayFormats: {
+                                    day: 'dd/MM/yyyy',
+                                    month: 'MMM yyyy',
+                                    year: 'yyyy'
+                                }
+                            },
+                            ticks: { color: '#a1a1aa' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: '#a1a1aa' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            };
+
+            if (canvasId === 'priceChart') {
+                if (priceChartInstance) priceChartInstance.destroy();
+                priceChartInstance = new Chart(ctx, chartConfig);
+            }
+        }
+
+        function inicializarGraficoComparativo(historico_normalizado) {
+            const ctx = document.getElementById('comparativoChart').getContext('2d');
+            
+            if (comparativoChartInstance) comparativoChartInstance.destroy();
+            
+            const labels = historico_normalizado.datas.map(data => new Date(data));
+            
+            comparativoChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: historico_normalizado.ticker1,
+                            data: historico_normalizado.valores1,
+                            borderColor: '#facc15',
+                            backgroundColor: 'rgba(250, 204, 21, 0.1)',
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            hoverRadius: 5,
+                        },
+                        {
+                            label: historico_normalizado.ticker2,
+                            data: historico_normalizado.valores2,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            hoverRadius: 5,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: { 
+                            display: true,
+                            labels: { color: '#a1a1aa' }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    return new Date(context[0].label).toLocaleDateString('pt-BR');
+                                },
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                tooltipFormat: 'dd/MM/yyyy',
+                                displayFormats: {
+                                    day: 'dd/MM/yyyy',
+                                    month: 'MMM yyyy',
+                                    year: 'yyyy'
+                                }
+                            },
+                            ticks: { color: '#a1a1aa' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: '#a1a1aa' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
                 }
             });
         }
 
-        function abrirMenuMobile() {
-            const menu = document.getElementById('mobile-menu');
-            const overlay = document.getElementById('menu-overlay');
-            if (menu && overlay) {
-                menu.classList.remove('translate-x-full');
-                overlay.classList.remove('bg-opacity-0', 'pointer-events-none');
-                overlay.classList.add('bg-opacity-50');
+        async function mudarPeriodoGrafico(periodo) {
+            console.log(`Mudar período do gráfico para: ${periodo}`);
+            if (currentTicker) {
+                await buscarAtivo(currentTicker, periodo);
             }
         }
 
+        // Menu mobile
         function fecharMenuMobile() {
-            const menu = document.getElementById('mobile-menu');
-            const overlay = document.getElementById('menu-overlay');
-            if (menu && overlay) {
-                menu.classList.add('translate-x-full');
-                overlay.classList.add('bg-opacity-0', 'pointer-events-none');
-                overlay.classList.remove('bg-opacity-50');
-            }
+            document.getElementById('mobile-menu').classList.add('translate-x-full');
+            document.getElementById('menu-overlay').classList.remove('bg-opacity-50');
+            document.getElementById('menu-overlay').classList.add('pointer-events-none');
         }
-        
-        document.addEventListener('DOMContentLoaded', (event) => {
-            renderizarPaginaInicial();
-            carregarListaDeAtivos();
-            inicializarModal();
-            document.getElementById('hamburger-btn')?.addEventListener('click', abrirMenuMobile);
-            document.getElementById('close-menu-btn')?.addEventListener('click', fecharMenuMobile);
-            document.getElementById('menu-overlay')?.addEventListener('click', fecharMenuMobile);
+
+        document.getElementById('hamburger-btn').addEventListener('click', () => {
+            document.getElementById('mobile-menu').classList.remove('translate-x-full');
+            document.getElementById('menu-overlay').classList.add('bg-opacity-50');
+            document.getElementById('menu-overlay').classList.remove('pointer-events-none');
+        });
+
+        document.getElementById('close-menu-btn').addEventListener('click', fecharMenuMobile);
+        document.getElementById('menu-overlay').addEventListener('click', fecharMenuMobile);
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            // O router já foi inicializado
         });
     </script>
 </body>
 </html>
+
