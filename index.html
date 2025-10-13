@@ -190,8 +190,8 @@
                     <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-4 leading-tight">
                         Análise de Ativos e <span class="text-amber-400"> Indicadores Financeiros</span>
                     </h1>
-                    <p class="text-lg text-gray-400 mb-10 max-w-3xl mx-auto">
-                        Dados, gráficos e indicadores para tomar as melhores decisões de investimento no mercado financeiro.
+                    <p class="text-base md:text-lg text-gray-400 mb-8 max-w-3xl mx-auto">
+                        Dados, gráficos e indicadores para as melhores decisões de investimento.
                     </p>
                     <div class="relative max-w-xl mx-auto">
                         <input type="text" id="heroSearchInput" placeholder="Buscar por nome ou ticker... (ex: PETR4, BOVA11, bitcoin)" class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-4 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all text-lg" autocomplete="off">
@@ -301,8 +301,8 @@
             const input2 = document.getElementById('comparadorInput2');
             const suggestionBox2 = document.getElementById('suggestion-box-2');
 
-            input1.addEventListener('input', () => mostrarSugestoes(input1, suggestionBox1));
-            input2.addEventListener('input', () => mostrarSugestoes(input2, suggestionBox2));
+            input1.addEventListener("input", () => mostrarSugestoes(input1, suggestionBox1, false)); // Passa 'false' para não buscar ativo
+            input2.addEventListener("input", () => mostrarSugestoes(input2, suggestionBox2, false)); // Passa 'false' para não buscar ativo
             
             // Esconder sugestões quando clicar fora
             document.addEventListener('click', (e) => {
@@ -512,7 +512,7 @@
             }
         }
         
-        function mostrarSugestoes(inputElement, suggestionBoxElement) {
+        function mostrarSugestoes(inputElement, suggestionBoxElement, triggerSearch = true) {
             const termo = inputElement.value.toLowerCase();
             
             if (termo.length < 1) {
@@ -544,9 +544,10 @@
                 suggestionBoxElement.querySelectorAll('.suggestion-item').forEach(item => {
                     item.addEventListener('click', () => {
                         inputElement.value = item.dataset.ticker;
-                        suggestionBoxElement.classList.add('hidden');
-                        // Trigger busca automaticamente
-                        buscarAtivo(item.dataset.ticker);
+                        suggestionBoxElement.classList.add("hidden");
+                        if (triggerSearch) {
+                            buscarAtivo(item.dataset.ticker);
+                        }
                     });
                 });
 
