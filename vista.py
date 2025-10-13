@@ -25,9 +25,9 @@ class ClearviewVista:
         self.lista_completa_ativos = []
 
         print("Carregando base de dados de ativos...")
-        self.carregar_dados_csv('acoes-listadas-b3.csv', 'EQUITY', delimiter=',')
-        self.carregar_dados_csv('fundosListados.csv', 'MUTUALFUND', delimiter=';')
-        self.carregar_dados_csv('etfs-listados-b3.csv', 'ETF', delimiter=',')
+        self.carregar_dados_csv("acoes-listadas-b3.csv", "EQUITY", delimiter=",")
+        self.carregar_dados_csv("fundosListados.csv", "MUTUALFUND", delimiter=";")
+        self.carregar_dados_csv("etfs-listados-b3.csv", "ETF", delimiter=",")
         print(f"✅ Base de dados carregada com {len(self.lista_completa_ativos)} ativos para sugestão.")
         
         if not DIFFLIB_AVAILABLE:
@@ -35,22 +35,22 @@ class ClearviewVista:
             print("  A pesquisa por nome aproximado de empresa estará desativada.\n")
 
         self.traducoes = {
-            'EQUITY': 'Ação', 'CRYPTOCURRENCY': 'Criptomoeda', 'CURRENCY': 'Moeda',
-            'ETF': 'ETF', 'INDEX': 'Índice', 'MUTUALFUND': 'Fundo Imobiliário (FII)'
+            "EQUITY": "Ação", "CRYPTOCURRENCY": "Criptomoeda", "CURRENCY": "Moeda",
+            "ETF": "ETF", "INDEX": "Índice", "MUTUALFUND": "Fundo Imobiliário (FII)"
         }
 
-    def carregar_dados_csv(self, arquivo_csv, tipo_ativo, delimiter=','):
+    def carregar_dados_csv(self, arquivo_csv, tipo_ativo, delimiter=","):
         try:
-            with open(arquivo_csv, mode='r', encoding='utf-8') as f:
+            with open(arquivo_csv, mode="r", encoding="utf-8") as f:
                 leitor = csv.reader(f, delimiter=delimiter)
                 header = next(leitor) 
                 
                 ticker_idx, nome_idx = -1, -1
                 for i, col in enumerate(header):
                     col_lower = col.lower()
-                    if 'ticker' in col_lower or 'código' in col_lower:
+                    if "ticker" in col_lower or "código" in col_lower:
                         ticker_idx = i
-                    if 'name' in col_lower or 'fundo' in col_lower or 'razão social' in col_lower:
+                    if "name" in col_lower or "fundo" in col_lower or "razão social" in col_lower:
                         nome_idx = i
                 
                 if ticker_idx == -1 or nome_idx == -1:
@@ -64,8 +64,8 @@ class ClearviewVista:
                         nome = linha[nome_idx].strip().title()
 
                         if ticker_base and nome:
-                            if tipo_ativo in ['MUTUALFUND', 'ETF'] and not ticker_base.endswith('11'):
-                                ticker_base += '11'
+                            if tipo_ativo in ["MUTUALFUND", "ETF"] and not ticker_base.endswith("11"):
+                                ticker_base += "11"
                             
                             ticker_sa = f"{ticker_base}.SA"
                             
@@ -75,9 +75,9 @@ class ClearviewVista:
                             self.nomes_map[nome.upper()].append(ticker_sa)
                             
                             self.lista_completa_ativos.append({
-                                'ticker': ticker_base,
-                                'nome': nome,
-                                'tipo': tipo_ativo
+                                "ticker": ticker_base,
+                                "nome": nome,
+                                "tipo": tipo_ativo
                             })
                             count += 1
                 if count > 0:
@@ -92,18 +92,18 @@ class ClearviewVista:
     def pesquisar_ativo(self, comando):
         comando_upper = comando.strip().upper()
         
-        if comando_upper.startswith('^'): return [comando_upper]
+        if comando_upper.startswith("^"): return [comando_upper]
 
-        if '-' in comando_upper:
-            partes = comando_upper.split('-')
+        if "-" in comando_upper:
+            partes = comando_upper.split("-")
             if len(partes) == 2:
-                moedas_fiat_conhecidas = ['USD', 'BRL', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF']
+                moedas_fiat_conhecidas = ["USD", "BRL", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF"]
                 if partes[0] in moedas_fiat_conhecidas and partes[1] in moedas_fiat_conhecidas:
                     return [f"{partes[0]}{partes[1]}=X"]
             return [comando_upper]
 
         if comando_upper in self.tickers_map: return [self.tickers_map[comando_upper]]
-        if re.match(r'^[A-Z]{4}\d{1,2}$', comando_upper): return [f"{comando_upper}.SA"]
+        if re.match(r"^[A-Z]{4}\d{1,2}$", comando_upper): return [f"{comando_upper}.SA"]
         if comando_upper in self.nomes_map: return self.nomes_map[comando_upper]
 
         if DIFFLIB_AVAILABLE:
@@ -118,87 +118,91 @@ class ClearviewVista:
         try:
             ativo = yf.Ticker(ticker)
             info = ativo.info
-            if not info or info.get('quoteType') is None: return None
+            if not info or info.get("quoteType") is None: return None
             hist = ativo.history(period="5y")
             return {"info": info, "historico": hist}
         except Exception:
             return None
+
+    def calcular_dividend_yield(self, ticker_info):
+        if not ticker_info: return None
+
+        # Tenta obter o 'trailingAnnualDividendYield' que é geralmente mais confiável como decimal
+        dy = ticker_info.get("trailingAnnualDividendYield")
+        if dy is not None: return dy
+
+        # Se 'trailingAnnualDividendYield' não estiver disponível, tenta 'dividendYield'
+        dy = ticker_info.get("dividendYield")
+        if dy is not None:
+            # yfinance geralmente retorna dividendYield como uma porcentagem decimal (ex: 0.05 para 5%)
+            # No entanto, para alguns ativos, pode vir como um valor percentual (ex: 5.0 para 5%)
+            # Para garantir consistência, sempre dividimos por 100 se o valor for maior que 1.
+            if dy > 1.0: 
+                return dy / 100.0
+            return dy
+
+        # Se nenhum dos anteriores estiver disponível, tenta calcular usando dividendRate e regularMarketPrice
+        # dividendRate é o dividendo anual por ação
+        dividend_rate = ticker_info.get("dividendRate")
+        regular_market_price = ticker_info.get("regularMarketPrice")
+
+        if dividend_rate is not None and regular_market_price is not None and regular_market_price > 0:
+            return dividend_rate / regular_market_price
+        
+        return None
 
     def buscar_dados_ativo(self, ticker):
         if ticker in self.cache: return self.cache[ticker]
 
         dados = self._fetch_ticker_data(ticker)
         if dados:
+            # Calcula e adiciona o Dividend Yield aos dados do ativo
+            dividend_yield = self.calcular_dividend_yield(dados["info"])
+            if dividend_yield is not None:
+                dados["info"]["dividendYield"] = dividend_yield
             self.cache[ticker] = dados
             return dados
 
-        if ticker.upper().endswith('-BRL'):
+        if ticker.upper().endswith("-BRL"):
             print(f"⚠️  Não foi possível buscar {ticker} diretamente. Tentando conversão via USD...")
-            base_crypto = ticker.split('-')[0]
-            ticker_usd, ticker_cambio = f"{base_crypto}-USD", 'USDBRL=X'
+            base_crypto = ticker.split("-")[0]
+            ticker_usd, ticker_cambio = f"{base_crypto}-USD", "USDBRL=X"
             
             dados_usd = self.buscar_dados_ativo(ticker_usd)
             dados_cambio = self.buscar_dados_ativo(ticker_cambio)
 
             if dados_usd and dados_cambio:
-                info_usd, hist_usd = dados_usd['info'], dados_usd['historico']
-                cambio_atual = dados_cambio['info']['regularMarketPrice']
-                hist_cambio = dados_cambio['historico']['Close']
+                info_usd, hist_usd = dados_usd["info"], dados_usd["historico"]
+                cambio_atual = dados_cambio["info"]["regularMarketPrice"]
+                hist_cambio = dados_cambio["historico"]["Close"]
 
                 info_sintetico = info_usd.copy()
-                info_sintetico['currency'] = 'BRL'
-                for key in ['regularMarketPrice', 'dayHigh', 'dayLow', 'open', 'previousClose', 'marketCap']:
+                info_sintetico["currency"] = "BRL"
+                for key in ["regularMarketPrice", "dayHigh", "dayLow", "open", "previousClose", "marketCap"]:
                     if info_sintetico.get(key):
                         info_sintetico[key] *= cambio_atual
                 
-                df_merged = pd.concat([hist_usd, hist_cambio.rename('Cambio')], axis=1)
-                df_merged['Cambio'].ffill(inplace=True)
-                df_merged.dropna(subset=['Open'], inplace=True)
-                for col in ['Open', 'High', 'Low', 'Close']:
-                    df_merged[col] *= df_merged['Cambio']
+                df_merged = pd.concat([hist_usd, hist_cambio.rename("Cambio")], axis=1)
+                df_merged["Cambio"].ffill(inplace=True)
+                df_merged.dropna(subset=["Open"], inplace=True)
+                for col in ["Open", "High", "Low", "Close"]:
+                    df_merged[col] *= df_merged["Cambio"]
                 
-                dados_sinteticos = {'info': info_sintetico, 'historico': df_merged.drop(columns=['Cambio'])}
+                dados_sinteticos = {"info": info_sintetico, "historico": df_merged.drop(columns=["Cambio"])}
                 self.cache[ticker] = dados_sinteticos
                 print(f"✅ Conversão de {ticker_usd} para BRL realizada com sucesso!")
                 return dados_sinteticos
 
         return None
 
-    def formatar_valor(self, valor, tipo='numero', moeda='R$'):
+    def formatar_valor(self, valor, tipo="numero", moeda="R$"):
         if not isinstance(valor, (int, float)): return "N/D"
         try:
-            if tipo == 'porcentagem': return f"{valor * 100:,.2f}%"
-            if tipo == 'bilhoes': return f"R$ {valor / 1e9:,.2f} Bi"
+            if tipo == "porcentagem": return f"{valor * 100:,.2f}%"
+            if tipo == "bilhoes": return f"R$ {valor / 1e9:,.2f} Bi"
             
-            prefixo = f"{moeda} " if tipo == 'moeda' else ""
+            prefixo = f"{moeda} " if tipo == "moeda" else ""
             if abs(valor) >= 1e9: return f"{prefixo}{valor / 1e9:,.2f} Bi"
             if abs(valor) >= 1e6: return f"{prefixo}{valor / 1e6:,.2f} Mi"
             return f"{prefixo}{valor:,.2f}"
         except (ValueError, TypeError): return "N/D"
-
-
-
-    def calcular_dividend_yield_anualizado(self, ticker_info, historico_precos):
-        if not ticker_info or historico_precos.empty: return None
-
-        # Tenta obter o dividendYield diretamente do yfinance
-        dy_yfinance = ticker_info.get("dividendYield")
-        if dy_yfinance is not None: return dy_yfinance
-
-        # Se não houver, calcula manualmente com base nos dividendos dos últimos 12 meses
-        try:
-            hoje = datetime.now(timezone("America/Sao_Paulo"))
-            um_ano_atras = hoje - relativedelta(years=1)
-            
-            dividendos = yf.Ticker(ticker_info["symbol"]).dividends
-            dividendos_ultimos_12m = dividendos[dividendos.index >= um_ano_atras]
-            
-            if not dividendos_ultimos_12m.empty:
-                total_dividendos = dividendos_ultimos_12m.sum()
-                preco_atual = ticker_info.get("regularMarketPrice")
-                if preco_atual and preco_atual > 0:
-                    return total_dividendos / preco_atual
-        except Exception as e:
-            print(f"Erro ao calcular DY anualizado para {ticker_info.get(\'symbol\', \'N/D\')}: {e}")
-        return None
-
