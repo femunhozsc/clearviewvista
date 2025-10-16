@@ -25,13 +25,13 @@ class ClearviewVista:
         self.lista_completa_ativos = []
 
         print("Carregando base de dados de ativos...")
-        self.carregar_dados_csv("acoes-listadas-b3.csv", "EQUITY", delimiter=",")
-        self.carregar_dados_csv("fundosListados.csv", "MUTUALFUND", delimiter=";")
-        self.carregar_dados_csv("etfs-listados-b3.csv", "ETF", delimiter=",")
+        self.carregar_dados_csv("/home/ubuntu/app/acoes-listadas-b3.csv", "EQUITY", delimiter=",")
+        self.carregar_dados_csv("/home/ubuntu/app/fundosListados_utf8.csv", "MUTUALFUND", delimiter=";")
+        # self.carregar_dados_csv("/home/ubuntu/app/etfs-listadas-b3.csv", "ETF", delimiter=",") # Removido pois o arquivo não foi encontrado
         print(f"✅ Base de dados carregada com {len(self.lista_completa_ativos)} ativos para sugestão.")
         
         if not DIFFLIB_AVAILABLE:
-            print("\n⚠️  Atenção: A biblioteca 'difflib' não foi encontrada.")
+            print("\n⚠️  Atenção: A biblioteca \'difflib\' não foi encontrada.")
             print("  A pesquisa por nome aproximado de empresa estará desativada.\n")
 
         self.traducoes = {
@@ -48,13 +48,13 @@ class ClearviewVista:
                 ticker_idx, nome_idx = -1, -1
                 for i, col in enumerate(header):
                     col_lower = col.lower()
-                    if "ticker" in col_lower or "código" in col_lower:
+                    if "ticker" == col_lower or "código" == col_lower:
                         ticker_idx = i
-                    if "name" in col_lower or "fundo" in col_lower or "razão social" in col_lower:
+                    if "name" == col_lower or "fundo" == col_lower or "razão social" == col_lower or "nome" == col_lower:
                         nome_idx = i
                 
                 if ticker_idx == -1 or nome_idx == -1:
-                    print(f"  - ⚠️  Aviso: Não foi possível identificar as colunas em '{arquivo_csv}'. Pulando.")
+                    print(f"  - ⚠️  Aviso: Não foi possível identificar as colunas em \'{arquivo_csv}\'. Pulando.")
                     return
                 
                 count = 0
@@ -81,12 +81,12 @@ class ClearviewVista:
                             })
                             count += 1
                 if count > 0:
-                    print(f"  - Arquivo '{arquivo_csv}' ({tipo_ativo}): {count} tickers adicionados.")
+                    print(f"  - Arquivo \'{arquivo_csv}\' ({tipo_ativo}): {count} tickers adicionados.")
 
         except FileNotFoundError:
-             print(f"  - ⚠️  Aviso: Arquivo '{arquivo_csv}' não encontrado.")
+             print(f"  - ⚠️  Aviso: Arquivo \'{arquivo_csv}\' não encontrado.")
         except Exception as e:
-            print(f"❌ Erro ao carregar o arquivo '{arquivo_csv}': {e}")
+            print(f"❌ Erro ao carregar o arquivo \'{arquivo_csv}\': {e}")
 
 
     def pesquisar_ativo(self, comando):
@@ -95,7 +95,7 @@ class ClearviewVista:
         if comando_upper.startswith("^"): return [comando_upper]
 
         if "-" in comando_upper:
-            partes = comando_upper.split("-")
+            partes = comando_upper.upper().split("-")
             if len(partes) == 2:
                 moedas_fiat_conhecidas = ["USD", "BRL", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF"]
                 if partes[0] in moedas_fiat_conhecidas and partes[1] in moedas_fiat_conhecidas:
@@ -127,21 +127,20 @@ class ClearviewVista:
     def calcular_dividend_yield(self, ticker_info):
         if not ticker_info: return None
 
-        # Tenta obter o 'trailingAnnualDividendYield' que é geralmente mais confiável como decimal
+        # 1. Tenta obter o 'trailingAnnualDividendYield' que é geralmente mais confiável como decimal
         dy = ticker_info.get("trailingAnnualDividendYield")
         if dy is not None: return dy
 
-        # Se 'trailingAnnualDividendYield' não estiver disponível, tenta 'dividendYield'
+        # 2. Se 'trailingAnnualDividendYield' não estiver disponível, tenta 'dividendYield'
         dy = ticker_info.get("dividendYield")
         if dy is not None:
-            # yfinance geralmente retorna dividendYield como uma porcentagem decimal (ex: 0.05 para 5%)
-            # No entanto, para alguns ativos, pode vir como um valor percentual (ex: 5.0 para 5%)
-            # Para garantir consistência, sempre dividimos por 100 se o valor for maior que 1.
+            # yfinance pode retornar dividendYield como um valor percentual (ex: 5.0 para 5%) ou decimal (ex: 0.05 para 5%)
+            # Se o valor for maior que 1.0, assumimos que é uma porcentagem e o convertemos para decimal.
             if dy > 1.0: 
                 return dy / 100.0
             return dy
 
-        # Se nenhum dos anteriores estiver disponível, tenta calcular usando dividendRate e regularMarketPrice
+        # 3. Se nenhum dos anteriores estiver disponível, tenta calcular usando dividendRate e regularMarketPrice
         # dividendRate é o dividendo anual por ação
         dividend_rate = ticker_info.get("dividendRate")
         regular_market_price = ticker_info.get("regularMarketPrice")

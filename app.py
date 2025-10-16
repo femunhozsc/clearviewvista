@@ -1,5 +1,5 @@
 import math
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import pandas as pd
 from datetime import datetime, timedelta
@@ -16,7 +16,7 @@ vista_analyzer = ClearviewVista()
 print("Clearview Vista carregado e pronto.")
 
 # Cria a aplicação Flask
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
 # --- Sistema de Cache Simples ---
@@ -57,7 +57,7 @@ def formatar_dados_para_web(info, historico, vista_instance, periodo_req='1y'):
     dados_formatados = {
         'nome': info.get('longName') or info.get('shortName'),
         'ticker': info.get('symbol', '').replace(".SA", ""),
-        'tipo_ativo': vista_instance.traducoes.get(quote_type),
+        'tipo_ativo': vista_analyzer.traducoes.get(quote_type),
         'quoteType': quote_type,
         'preco_atual': fv(preco_atual, 'moeda'),
         'variacao_dia_pct': fv(var_percentual, 'porcentagem'),
@@ -134,6 +134,14 @@ def get_dados_rankings_com_cache():
     return cached_data
 
 # --- ROTAS DA API ---
+@app.route('/')
+def index():
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/<path:path>')
+def static_files(path):
+    return send_from_directory(app.static_folder, path)
+
 @app.route('/api/ativos/lista')
 def get_lista_ativos():
     return jsonify(vista_analyzer.lista_completa_ativos)
@@ -237,112 +245,63 @@ def get_ranking_completo(ranking_type):
         filtered_list = [s for s in all_stocks if s.get('dividend_yield_num', 0) > 0]
         sorted_list = sorted(filtered_list, key=lambda x: x.get('dividend_yield_num', 0), reverse=True)
     elif ranking_type == 'market_cap':
-         filtered_list = [s for s in all_stocks if s.get('market_cap_num', 0) > 0]
-         sorted_list = sorted(filtered_list, key=lambda x: x.get('market_cap_num', 0), reverse=True)
+        filtered_list = [s for s in all_stocks if s.get('market_cap_num', 0) > 0]
+        sorted_list = sorted(filtered_list, key=lambda x: x.get('market_cap_num', 0), reverse=True)
     else:
-        return jsonify({"erro": "Tipo de ranking inválido"}), 404
-    
-    final_list = copy.deepcopy(sorted_list[:30])
+        return jsonify({'erro': 'Tipo de ranking inválido'}), 400
 
-    for item in final_list:
-        item['preco'] = vista_analyzer.formatar_valor(item.get('preco'), tipo='moeda')
-        item['variacao'] = vista_analyzer.formatar_valor(item.get('variacao_num', 0), 'porcentagem')
-        item['dy_formatado'] = vista_analyzer.formatar_valor(item.get('dividend_yield_num', 0), 'porcentagem')
-        item['market_cap_formatado'] = vista_analyzer.formatar_valor(item.get('market_cap_num', 0), 'bilhoes')
-
-    return jsonify(final_list)
-
-
-@app.route('/api/pesquisa/<string:termo_busca>')
-def pesquisar_ativo(termo_busca):
-    periodo = request.args.get('periodo', '1y')
-    tickers_encontrados = vista_analyzer.pesquisar_ativo(termo_busca)
-    tickers_validos = {t: d for t in tickers_encontrados if (d := vista_analyzer.buscar_dados_ativo(t))}
-    if not tickers_validos:
-        return jsonify({"erro": "Nenhum ativo encontrado"}), 404
-    if len(tickers_validos) > 1:
-        opcoes = [{'ticker': t.replace(".SA", ""), 'nome': d['info'].get('shortName', t)} for t, d in tickers_validos.items()]
-        return jsonify({"tipo": "lista_opcoes", "dados": sorted(opcoes, key=lambda x: x['ticker'])})
-    else:
-        ticker_final = list(tickers_validos.keys())[0]
-        dados_completos = tickers_validos[ticker_final]
-        dados_formatados = formatar_dados_para_web(dados_completos['info'], dados_completos.get('historico'), vista_analyzer, periodo)
-        return jsonify({"tipo": "dados_completos", "dados": dados_formatados})
-
-@app.route('/api/comparar/<string:ticker1>/<string:ticker2>')
-def comparar_ativos(ticker1, ticker2):
-    periodo = request.args.get('periodo', '1y')
-    
-    ticker1_full_list = vista_analyzer.pesquisar_ativo(ticker1)
-    ticker2_full_list = vista_analyzer.pesquisar_ativo(ticker2)
-    
-    if not ticker1_full_list or not ticker2_full_list:
-         return jsonify({"erro": "Um ou ambos os tickers não foram encontrados."}), 404
-
-    dados1 = vista_analyzer.buscar_dados_ativo(ticker1_full_list[0])
-    dados2 = vista_analyzer.buscar_dados_ativo(ticker2_full_list[0])
-
-    if not dados1 or not dados2:
-        return jsonify({"erro": "Não foi possível obter dados para um ou ambos os ativos."}), 404
-
-    info1, info2 = dados1['info'], dados2['info']
-    hist1, hist2 = dados1.get('historico'), dados2.get('historico')
-    
-    ativo1_data = {'ticker': ticker1.upper(), 'nome': info1.get('shortName'), 'quoteType': info1.get('quoteType')}
-    ativo2_data = {'ticker': ticker2.upper(), 'nome': info2.get('shortName'), 'quoteType': info2.get('quoteType')}
-
-    indicadores_comparativos = []
-    chaves_indicadores = [
-        ('regularMarketPrice', 'Preço Atual', 'moeda', False), ('marketCap', 'Valor de Mercado', 'bilhoes', True),
-        ('trailingPE', 'P/L', 'numero', False), ('priceToBook', 'P/VP', 'numero', False),
-        ('trailingAnnualDividendYield', 'Dividend Yield', 'porcentagem', True),
-        ('returnOnEquity', 'ROE', 'porcentagem', True), ('debtToEquity', 'Dívida/Patrimônio', 'numero', False)
-    ]
-    for chave, label, tipo, high_is_better in chaves_indicadores:
-        v1_raw = info1.get(chave)
-        v2_raw = info2.get(chave)
-        
-        winner = 0
-        if isinstance(v1_raw, (int, float)) and isinstance(v2_raw, (int, float)):
-            if high_is_better:
-                if v1_raw > v2_raw: winner = 1
-                elif v2_raw > v1_raw: winner = 2
-            else: 
-                if v1_raw < v2_raw: winner = 1
-                elif v2_raw < v1_raw: winner = 2
-        
-        indicadores_comparativos.append({
-            'label': label,
-            'valor1': vista_analyzer.formatar_valor(v1_raw, tipo),
-            'valor2': vista_analyzer.formatar_valor(v2_raw, tipo),
-            'winner': winner
-        })
-
-    if hist1 is None or hist2 is None or hist1.empty or hist2.empty:
-        return jsonify({"erro": "Dados históricos insuficientes para comparação."}), 404
-        
-    hist_merged = pd.concat([hist1['Close'].rename(ticker1), hist2['Close'].rename(ticker2)], axis=1).dropna()
-    
-    if hist_merged.empty:
-        return jsonify({"erro": "Não há dados históricos sobrepostos para o período selecionado."}), 400
-
-    normalized_hist = (hist_merged / hist_merged.iloc[0]) * 100
-    
-    historico_normalizado = {
-        'labels': normalized_hist.index.strftime('%Y-%m-%dT%H:%M:%S').tolist(),
-        'datasets': {
-            ticker1.upper(): normalized_hist[ticker1].tolist(),
-            ticker2.upper(): normalized_hist[ticker2].tolist()
+    # Formata os dados para exibição
+    formatted_list = []
+    for item in sorted_list:
+        formatted_item = {
+            'ticker': item['ticker'],
+            'preco': vista_analyzer.formatar_valor(item.get('preco'), tipo='moeda'),
+            'variacao': vista_analyzer.formatar_valor(item.get('variacao_num', 0), 'porcentagem'),
+            'eh_positivo': item.get('eh_positivo', False),
+            'nome': vista_analyzer.tickers_map.get(f"{item['ticker']}.SA") or item['ticker'],
+            'quoteType': item.get('quoteType')
         }
-    }
-    
-    return jsonify({
-        'ativo1': ativo1_data,
-        'ativo2': ativo2_data,
-        'indicadores_comparativos': indicadores_comparativos,
-        'historico_normalizado': historico_normalizado
-    })
+        if ranking_type == 'dy':
+            formatted_item['dy_formatado'] = vista_analyzer.formatar_valor(item.get('dividend_yield_num', 0), 'porcentagem')
+        elif ranking_type == 'market_cap':
+            formatted_item['market_cap_formatado'] = vista_analyzer.formatar_valor(item.get('market_cap_num', 0), 'bilhoes')
+        formatted_list.append(formatted_item)
 
+    return jsonify(formatted_list)
+
+@app.route('/api/pesquisa/<string:termo>')
+def pesquisar_ativo_api(termo):
+    if not termo: return jsonify({'erro': 'Termo de busca vazio'}), 400
+
+    tickers_encontrados = vista_analyzer.pesquisar_ativo(termo)
+    if not tickers_encontrados:
+        return jsonify({'erro': 'Ativo não encontrado'}), 404
+
+    if len(tickers_encontrados) > 1:
+        # Retorna uma lista de opções para o front-end escolher
+        opcoes = []
+        for t in tickers_encontrados:
+            info = vista_analyzer.buscar_dados_ativo(t)
+            if info and info.get('info'):
+                opcoes.append({
+                    'ticker': t.replace(".SA", ""),
+                    'nome': info['info'].get('shortName') or info['info'].get('longName') or t.replace(".SA", ""),
+                    'tipo': vista_analyzer.traducoes.get(info['info'].get('quoteType'))
+                })
+        return jsonify({'tipo': 'lista_opcoes', 'dados': opcoes})
+    else:
+        # Retorna os dados completos do ativo
+        ticker_final = tickers_encontrados[0]
+        periodo = request.args.get('periodo', '1y')
+        dados_completos = vista_analyzer.buscar_dados_ativo(ticker_final)
+        if dados_completos:
+            info = dados_completos['info']
+            historico = dados_completos['historico']
+            
+            formatted_data = formatar_dados_para_web(info, historico, vista_analyzer, periodo)
+            return jsonify({'tipo': 'dados_completos', 'dados': formatted_data})
+        else:
+            return jsonify({'erro': 'Não foi possível obter dados para o ativo'}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)
