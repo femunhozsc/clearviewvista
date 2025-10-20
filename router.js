@@ -114,11 +114,22 @@ function setupRoutes() {
         renderizarPaginaInicial();
     });
 
-    // Página de ativo específico
-    router.addRoute('/:ticker', (path, params) => {
+    // Página de ativo específico - rota com /acoes/ prefix
+    router.addRoute('/acoes/:ticker', (path, params) => {
         const queryParams = router.getQueryParams(path);
         const periodo = queryParams.periodo || '1y';
         buscarAtivo(params.ticker.toUpperCase(), periodo);
+    });
+
+    // Página de ativo específico - rota direta (compatibilidade)
+    router.addRoute('/:ticker', (path, params) => {
+        // Verifica se não é uma rota especial
+        const specialRoutes = ['comparador', 'simulador', 'noticias', 'internacional', 'carteiras', 'login', 'ranking'];
+        if (!specialRoutes.includes(params.ticker.toLowerCase())) {
+            const queryParams = router.getQueryParams(path);
+            const periodo = queryParams.periodo || '1y';
+            buscarAtivo(params.ticker.toUpperCase(), periodo);
+        }
     });
 
     // Página do comparador
@@ -147,6 +158,21 @@ function setupRoutes() {
         renderizarPaginaNoticias();
     });
 
+    // Página internacional
+    router.addRoute('/internacional', () => {
+        renderizarPaginaInternacional();
+    });
+
+    // Página de carteiras
+    router.addRoute('/carteiras', () => {
+        renderizarPaginaCarteiras();
+    });
+
+    // Página de login
+    router.addRoute('/login', () => {
+        renderizarPaginaLogin();
+    });
+
     // Página do Bitcoin
     router.addRoute('/bitcoin', () => {
         buscarAtivo('BTC-BRL');
@@ -165,7 +191,7 @@ function setupRoutes() {
 
 // Funções auxiliares para navegação
 function navigateToAsset(ticker) {
-    router.navigate(`/${ticker.toUpperCase()}`);
+    router.navigate(`/acoes/${ticker.toUpperCase()}`);
 }
 
 function navigateToComparison(ticker1, ticker2) {
@@ -182,63 +208,6 @@ function navigateToNews() {
 
 function navigateToHome() {
     router.navigate('/');
-}
-
-// Atualiza as funções existentes para usar o router
-function renderizarPaginaInicial(event) {
-    if (event) event.preventDefault();
-    
-    mainContainer.innerHTML = `
-        <div class="relative z-10 text-center py-16 md:py-21 fade-in-up">
-            <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-4 leading-tight">
-                Análise de Ativos e <span class="text-amber-400"> Indicadores Financeiros</span>
-            </h1>
-            <p class="text-lg text-gray-400 mb-10 max-w-3xl mx-auto">
-                Dados, gráficos e indicadores para tomar as melhores decisões de investimento no mercado financeiro.
-            </p>
-            <div class="relative max-w-xl mx-auto">
-                <input type="text" id="heroSearchInput" placeholder="Buscar por nome ou ticker... (ex: PETR4, BOVA11, bitcoin)" class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-6 py-4 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition-all text-lg" autocomplete="off">
-                <button id="heroSearchButton" class="absolute inset-y-0 right-0 flex items-center pr-5 text-gray-400 hover:text-amber-400 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                </button>
-                <div id="suggestion-box" class="absolute hidden w-full mt-2 card-background shadow-lg"></div>
-            </div>
-        </div>
-        <div id="homepage-content" class="mt-12">
-            <div class="flex justify-center items-center p-8"><div class="loader border-4 border-zinc-800 rounded-full w-12 h-12"></div></div>
-        </div>
-    `;
-
-    const searchInput = document.getElementById('heroSearchInput');
-    const searchButton = document.getElementById('heroSearchButton');
-    const suggestionBox = document.getElementById('suggestion-box');
-
-    searchInput.addEventListener('input', () => mostrarSugestoes(searchInput, suggestionBox));
-    searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const termo = searchInput.value.trim();
-            if (termo) {
-                navigateToAsset(termo);
-            }
-        }
-    });
-
-    searchButton.addEventListener('click', () => {
-        const termo = searchInput.value.trim();
-        if (termo) {
-            navigateToAsset(termo);
-        }
-    });
-
-    // Esconde sugestões ao clicar fora
-    document.addEventListener('click', (e) => {
-        if (!searchInput.contains(e.target) && !suggestionBox.contains(e.target)) {
-            suggestionBox.classList.add('hidden');
-        }
-    });
-
-    carregarDadosHomepage();
 }
 
 // Função para renderizar página de notícias
@@ -281,6 +250,71 @@ function renderizarPaginaNoticias() {
             
             <div class="text-center mt-12">
                 <p class="text-gray-500">Funcionalidade de notícias em desenvolvimento</p>
+            </div>
+        </div>
+    `;
+}
+
+// Função para renderizar página internacional
+function renderizarPaginaInternacional() {
+    mainContainer.innerHTML = `
+        <div class="fade-in-up">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Mercados Internacionais</h1>
+                <p class="text-lg text-gray-400">Acompanhe os principais mercados globais</p>
+            </div>
+            
+            <div class="text-center py-20">
+                <p class="text-gray-500 text-lg">Funcionalidade de mercados internacionais em desenvolvimento</p>
+            </div>
+        </div>
+    `;
+}
+
+// Função para renderizar página de carteiras
+function renderizarPaginaCarteiras() {
+    mainContainer.innerHTML = `
+        <div class="fade-in-up">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Minhas Carteiras</h1>
+                <p class="text-lg text-gray-400">Gerencie seus investimentos</p>
+            </div>
+            
+            <div class="text-center py-20">
+                <p class="text-gray-500 text-lg">Funcionalidade de carteiras em desenvolvimento</p>
+            </div>
+        </div>
+    `;
+}
+
+// Função para renderizar página de login
+function renderizarPaginaLogin() {
+    mainContainer.innerHTML = `
+        <div class="fade-in-up">
+            <div class="max-w-md mx-auto mt-20">
+                <div class="card-background p-8">
+                    <h1 class="text-3xl font-bold text-white mb-6 text-center">Login</h1>
+                    
+                    <form class="space-y-6">
+                        <div>
+                            <label class="block text-gray-300 mb-2">Email</label>
+                            <input type="email" class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="seu@email.com">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-300 mb-2">Senha</label>
+                            <input type="password" class="w-full bg-zinc-900/50 border border-zinc-700 text-gray-200 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="••••••••">
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 rounded-lg transition-colors">
+                            Entrar
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-6">
+                        <p class="text-gray-500">Funcionalidade de login em desenvolvimento</p>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -359,4 +393,3 @@ async function carregarRankingCompleto(tipo) {
 document.addEventListener('DOMContentLoaded', () => {
     setupRoutes();
 });
-
