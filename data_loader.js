@@ -665,3 +665,48 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
 document.addEventListener("DOMContentLoaded", carregarDadosPaginaInicial);
 
+
+
+
+// Lógica do carrossel para ativos populares
+let scrollPosition = 0;
+const cardWidth = 200; // Largura estimada de cada card + gap
+
+function setupCarousel() {
+    const container = document.getElementById('ativos-populares-container');
+    const prevBtn = document.getElementById('carousel-prev-btn');
+    const nextBtn = document.getElementById('carousel-next-btn');
+
+    if (!container || !prevBtn || !nextBtn) return;
+
+    function updateButtonVisibility() {
+        prevBtn.style.display = scrollPosition > 0 ? 'block' : 'none';
+        nextBtn.style.display = (container.scrollWidth - container.scrollLeft > container.clientWidth) ? 'block' : 'none';
+    }
+
+    nextBtn.addEventListener('click', () => {
+        container.scrollBy({ left: cardWidth * 3, behavior: 'smooth' });
+    });
+
+    prevBtn.addEventListener('click', () => {
+        container.scrollBy({ left: -cardWidth * 3, behavior: 'smooth' });
+    });
+
+    container.addEventListener('scroll', () => {
+        scrollPosition = container.scrollLeft;
+        updateButtonVisibility();
+    });
+
+    // Initial check
+    setTimeout(updateButtonVisibility, 500);
+    window.addEventListener('resize', updateButtonVisibility);
+}
+
+// Chamar setupCarousel após o carregamento dos dados da página inicial
+// Isso deve ser feito após a renderização do HTML dos ativos populares
+const originalRenderizarPaginaInicial = renderizarPaginaInicial;
+renderizarPaginaInicial = async (event) => {
+    await originalRenderizarPaginaInicial(event);
+    setupCarousel();
+};
+
