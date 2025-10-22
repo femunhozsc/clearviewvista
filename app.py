@@ -24,90 +24,6 @@ cached_data = None
 cache_timestamp = 0
 CACHE_DURATION = 900 # 15 minutos
 
-def calcular_indicadores_avancados(info):
-    """Calcula indicadores financeiros avançados a partir dos dados do yfinance."""
-    indicadores = {}
-    
-    # Dados base
-    preco_atual = info.get('regularMarketPrice')
-    market_cap = info.get('marketCap')
-    total_assets = info.get('totalAssets')
-    total_revenue = info.get('totalRevenue')
-    ebitda = info.get('ebitda')
-    net_income = info.get('netIncomeToCommon')
-    total_equity = info.get('totalStockholderEquity')
-    total_debt = info.get('totalDebt')
-    dividends_paid = info.get('dividendsPaid') or info.get('trailingAnnualDividendRate')
-    shares_outstanding = info.get('sharesOutstanding')
-    
-    # LPA (Lucro Por Ação) - Earnings Per Share
-    lpa = info.get('trailingEps')
-    if not lpa and net_income and shares_outstanding and shares_outstanding > 0:
-        lpa = net_income / shares_outstanding
-    indicadores['lpa'] = lpa
-    
-    # VPA (Valor Patrimonial por Ação) - Book Value Per Share
-    vpa = info.get('bookValue')
-    if not vpa and total_equity and shares_outstanding and shares_outstanding > 0:
-        vpa = total_equity / shares_outstanding
-    indicadores['vpa'] = vpa
-    
-    # Dividend Yield CORRETO - usando preço atual
-    div_rate = info.get('trailingAnnualDividendRate')
-    if div_rate and preco_atual and preco_atual > 0:
-        indicadores['dividend_yield'] = div_rate / preco_atual
-    else:
-        indicadores['dividend_yield'] = info.get('dividendYield', 0)
-    
-    # P/Ativo Total
-    if market_cap and total_assets and total_assets > 0:
-        indicadores['p_ativo_total'] = market_cap / total_assets
-    
-    # Giro de Ativos
-    if total_revenue and total_assets and total_assets > 0:
-        indicadores['giro_ativos'] = total_revenue / total_assets
-    
-    # ROIC (Return on Invested Capital) CORRETO
-    # ROIC = NOPAT / Invested Capital
-    # NOPAT = EBIT * (1 - Tax Rate)
-    # Invested Capital = Total Equity + Total Debt
-    if ebitda and total_equity and total_debt:
-        # Aproximação: usando EBITDA como proxy para EBIT
-        tax_rate = 0.34  # Taxa de imposto aproximada no Brasil
-        nopat = ebitda * (1 - tax_rate)
-        invested_capital = total_equity + total_debt
-        if invested_capital > 0:
-            indicadores['roic'] = nopat / invested_capital
-    
-    # Payout (Percentual do lucro distribuído como dividendos)
-    if dividends_paid and net_income and net_income > 0:
-        # dividendsPaid geralmente é negativo no yfinance
-        payout = abs(dividends_paid) / net_income
-        indicadores['payout'] = min(payout, 1.0)  # Limita a 100%
-    
-    # Valor de Graham
-    if lpa and vpa and lpa > 0 and vpa > 0:
-        indicadores['valor_graham'] = math.sqrt(22.5 * lpa * vpa)
-    
-    # Preço Teto (Bazin) - assumindo 6% de yield mínimo
-    if div_rate and div_rate > 0:
-        indicadores['preco_teto'] = div_rate / 0.06
-    
-    # P/EBIT
-    if market_cap and ebitda and ebitda > 0:
-        indicadores['p_ebit'] = market_cap / ebitda
-    
-    # EV/EBIT
-    enterprise_value = info.get('enterpriseValue')
-    if enterprise_value and ebitda and ebitda > 0:
-        indicadores['ev_ebit'] = enterprise_value / ebitda
-    
-    # Margem EBIT
-    if ebitda and total_revenue and total_revenue > 0:
-        indicadores['margem_ebit'] = ebitda / total_revenue
-    
-    return indicadores
-
 def formatar_dados_para_web(info, historico, vista_instance, periodo_req='1y'):
     """Formata os dados brutos em um dicionário estruturado para o front-end."""
     quote_type = info.get('quoteType')
@@ -120,9 +36,11 @@ def formatar_dados_para_web(info, historico, vista_instance, periodo_req='1y'):
     fech_anterior = info.get('previousClose')
     var_monetaria = info.get('regularMarketChange', preco_atual - fech_anterior if preco_atual and fech_anterior else 0)
     var_percentual = (var_monetaria / fech_anterior) if var_monetaria is not None and fech_anterior and fech_anterior != 0 else 0
-    
-    # Calcula indicadores avançados
-    indicadores_calc = calcular_indicadores_avancados(info)
+    div_rate = info.get('trailingAnnualDividendRate')
+    dividend_yield_calculado = (div_rate / fech_anterior) if div_rate and fech_anterior and fech_anterior > 0 else 0.0
+    lpa, vpa = info.get('trailingEps'), info.get('bookValue')
+    valor_graham = math.sqrt(22.5 * lpa * vpa) if lpa and vpa and lpa > 0 and vpa > 0 else None
+    preco_teto = div_rate / 0.06 if div_rate and div_rate > 0 else None
 
     historico_grafico = None
     if historico is not None and not historico.empty:
@@ -152,34 +70,21 @@ def formatar_dados_para_web(info, historico, vista_instance, periodo_req='1y'):
     if quote_type == 'EQUITY':
         dados_formatados['secoes'].extend([
             {'titulo': 'Indicadores de Valuation', 'indicadores': [
-                {'label': 'Dividend Yield', 'value': fv(indicadores_calc.get('dividend_yield'), 'porcentagem')},
-                {'label': 'P/L', 'value': fv(info.get('trailingPE'))},
-                {'label': 'P/VP', 'value': fv(info.get('priceToBook'))},
-                {'label': 'EV/EBITDA', 'value': fv(info.get('enterpriseToEbitda'))},
-                {'label': 'P/Ativos', 'value': fv(indicadores_calc.get('p_ativo_total'))},
-                {'label': 'P/EBIT', 'value': fv(indicadores_calc.get('p_ebit'))},
-                {'label': 'EV/EBIT', 'value': fv(indicadores_calc.get('ev_ebit'))},
-                {'label': 'Valor Graham', 'value': fv(indicadores_calc.get('valor_graham'), 'moeda')},
-                {'label': 'Preço Teto (Bazin)', 'value': fv(indicadores_calc.get('preco_teto'), 'moeda')},
+                {'label': 'Dividend Yield', 'value': fv(dividend_yield_calculado, 'porcentagem')}, {'label': 'P/L', 'value': fv(info.get('trailingPE'))},
+                {'label': 'P/VP', 'value': fv(info.get('priceToBook'))}, {'label': 'EV/EBITDA', 'value': fv(info.get('enterpriseToEbitda'))},
+                {'label': 'P/Ativos', 'value': fv(info.get('priceToSalesTrailing12Months'))}, {'label': 'Valor Graham', 'value': fv(valor_graham, 'moeda')},
+                {'label': 'Preço Teto (Bazin)', 'value': fv(preco_teto, 'moeda')},
             ]},
             {'titulo': 'Indicadores de Endividamento', 'indicadores': [
-                {'label': 'Liquidez Corrente', 'value': fv(info.get('currentRatio'))},
-                {'label': 'Dív. Bruta / Patrimônio', 'value': fv(info.get('debtToEquity'))},
+                {'label': 'Liquidez Corrente', 'value': fv(info.get('currentRatio'))}, {'label': 'Dív. Bruta / Patrimônio', 'value': fv(info.get('debtToEquity'))},
             ]},
             {'titulo': 'Indicadores de Eficiência', 'indicadores': [
-                {'label': 'Marg. Bruta', 'value': fv(info.get('grossMargins'), 'porcentagem')},
-                {'label': 'Marg. EBITDA', 'value': fv(info.get('ebitdaMargins'), 'porcentagem')},
-                {'label': 'Marg. EBIT', 'value': fv(indicadores_calc.get('margem_ebit'), 'porcentagem')},
+                {'label': 'Marg. Bruta', 'value': fv(info.get('grossMargins'), 'porcentagem')}, {'label': 'Marg. EBITDA', 'value': fv(info.get('ebitdaMargins'), 'porcentagem')},
                 {'label': 'Marg. Líquida', 'value': fv(info.get('profitMargins'), 'porcentagem')},
-                {'label': 'Giro Ativos', 'value': fv(indicadores_calc.get('giro_ativos'))},
             ]},
             {'titulo': 'Indicadores de Rentabilidade', 'indicadores': [
-                {'label': 'ROE', 'value': fv(info.get('returnOnEquity'), 'porcentagem')},
-                {'label': 'ROA', 'value': fv(info.get('returnOnAssets'), 'porcentagem')},
-                {'label': 'ROIC', 'value': fv(indicadores_calc.get('roic'), 'porcentagem')},
-                {'label': 'LPA', 'value': fv(indicadores_calc.get('lpa'), 'moeda')},
-                {'label': 'VPA', 'value': fv(indicadores_calc.get('vpa'), 'moeda')},
-                {'label': 'Payout', 'value': fv(indicadores_calc.get('payout'), 'porcentagem')},
+                {'label': 'ROE', 'value': fv(info.get('returnOnEquity'), 'porcentagem')}, {'label': 'ROA', 'value': fv(info.get('returnOnAssets'), 'porcentagem')},
+                {'label': 'ROIC', 'value': fv(info.get('returnOnAssets'), 'porcentagem')}, 
             ]}
         ])
     return dados_formatados
@@ -206,20 +111,17 @@ def get_dados_rankings_com_cache():
         if dados and dados.get('info'):
             info = dados['info']
             
-            preco_atual = info.get('regularMarketPrice')
             fech_anterior = info.get('previousClose')
             var_monetaria = info.get('regularMarketChange')
+            div_rate = info.get('trailingAnnualDividendRate')
             market_cap = info.get('marketCap')
 
             var_pct_ratio = (var_monetaria / fech_anterior) if var_monetaria is not None and fech_anterior and fech_anterior != 0 else 0.0
+            dividend_yield_calculado = (div_rate / fech_anterior) if div_rate and fech_anterior and fech_anterior > 0 else 0.0
             
-            # Dividend Yield CORRETO - usando preço atual
-            div_rate = info.get('trailingAnnualDividendRate')
-            dividend_yield_calculado = (div_rate / preco_atual) if div_rate and preco_atual and preco_atual > 0 else 0.0
-            
-            if market_cap and preco_atual is not None:
+            if market_cap and info.get('regularMarketPrice') is not None:
                 all_stocks_data.append({
-                    'ticker': ticker, 'preco': preco_atual,
+                    'ticker': ticker, 'preco': info.get('regularMarketPrice'),
                     'variacao_num': var_pct_ratio, 'eh_positivo': var_pct_ratio >= 0,
                     'dividend_yield_num': dividend_yield_calculado,
                     'market_cap_num': market_cap,
