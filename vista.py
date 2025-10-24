@@ -124,55 +124,11 @@ class ClearviewVista:
         except Exception:
             return None
 
-    def calcular_dividend_yield(self, ticker_info):
-        """
-        Calcula o Dividend Yield de forma consistente e confiável.
-        
-        Fórmula: DY = (Dividendo Anual por Ação) / (Preço Atual da Ação)
-        
-        Esta é a forma mais precisa pois usa o preço atual real da ação.
-        """
-        if not ticker_info: 
-            return None
-
-        # Obtém o dividendo anual por ação
-        dividend_rate = ticker_info.get("trailingAnnualDividendRate")
-        
-        # Obtém o preço atual da ação
-        current_price = ticker_info.get("regularMarketPrice")
-        
-        # Calcula o DY se ambos os valores estiverem disponíveis
-        if dividend_rate is not None and current_price is not None and current_price > 0:
-            dividend_yield = dividend_rate / current_price
-            return dividend_yield
-        
-        # Fallback: tenta obter o DY pré-calculado do yfinance
-        # Mas verifica se está em formato decimal ou percentual
-        dy_precalculado = ticker_info.get("trailingAnnualDividendYield")
-        if dy_precalculado is not None:
-            # Se o valor for maior que 1, assume que está em percentual e converte
-            if dy_precalculado > 1.0:
-                return dy_precalculado / 100.0
-            return dy_precalculado
-        
-        # Último fallback: dividendYield
-        dy_fallback = ticker_info.get("dividendYield")
-        if dy_fallback is not None:
-            if dy_fallback > 1.0:
-                return dy_fallback / 100.0
-            return dy_fallback
-        
-        return None
-
     def buscar_dados_ativo(self, ticker):
         if ticker in self.cache: return self.cache[ticker]
 
         dados = self._fetch_ticker_data(ticker)
         if dados:
-            # Calcula e adiciona o Dividend Yield aos dados do ativo
-            dividend_yield = self.calcular_dividend_yield(dados["info"])
-            if dividend_yield is not None:
-                dados["info"]["dividendYield"] = dividend_yield
             self.cache[ticker] = dados
             return dados
 
