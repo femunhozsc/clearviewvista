@@ -31,7 +31,7 @@ class ClearviewVista:
         print(f"✅ Base de dados carregada com {len(self.lista_completa_ativos)} ativos para sugestão.")
         
         if not DIFFLIB_AVAILABLE:
-            print("\n⚠️  Atenção: A biblioteca \'difflib\' não foi encontrada.")
+            print("\n⚠️  Atenção: A biblioteca 'difflib' não foi encontrada.")
             print("  A pesquisa por nome aproximado de empresa estará desativada.\n")
 
         self.traducoes = {
@@ -54,7 +54,7 @@ class ClearviewVista:
                         nome_idx = i
                 
                 if ticker_idx == -1 or nome_idx == -1:
-                    print(f"  - ⚠️  Aviso: Não foi possível identificar as colunas em \'{arquivo_csv}\'. Pulando.")
+                    print(f"  - ⚠️  Aviso: Não foi possível identificar as colunas em '{arquivo_csv}'. Pulando.")
                     return
                 
                 count = 0
@@ -81,12 +81,12 @@ class ClearviewVista:
                             })
                             count += 1
                 if count > 0:
-                    print(f"  - Arquivo \'{arquivo_csv}\' ({tipo_ativo}): {count} tickers adicionados.")
+                    print(f"  - Arquivo '{arquivo_csv}' ({tipo_ativo}): {count} tickers adicionados.")
 
         except FileNotFoundError:
-             print(f"  - ⚠️  Aviso: Arquivo \'{arquivo_csv}\' não encontrado.")
+             print(f"  - ⚠️  Aviso: Arquivo '{arquivo_csv}' não encontrado.")
         except Exception as e:
-            print(f"❌ Erro ao carregar o arquivo \'{arquivo_csv}\': {e}")
+            print(f"❌ Erro ao carregar o arquivo '{arquivo_csv}': {e}")
 
 
     def pesquisar_ativo(self, comando):
@@ -125,28 +125,42 @@ class ClearviewVista:
             return None
 
     def calcular_dividend_yield(self, ticker_info):
-        if not ticker_info: return None
+        """
+        Calcula o Dividend Yield de forma consistente e confiável.
+        
+        Fórmula: DY = (Dividendo Anual por Ação) / (Preço Atual da Ação)
+        
+        Esta é a forma mais precisa pois usa o preço atual real da ação.
+        """
+        if not ticker_info: 
+            return None
 
-        # 1. Tenta obter o 'trailingAnnualDividendYield' que é geralmente mais confiável como decimal
-        dy = ticker_info.get("trailingAnnualDividendYield")
-        if dy is not None: return dy
-
-        # 2. Se 'trailingAnnualDividendYield' não estiver disponível, tenta 'dividendYield'
-        dy = ticker_info.get("dividendYield")
-        if dy is not None:
-            # yfinance pode retornar dividendYield como um valor percentual (ex: 5.0 para 5%) ou decimal (ex: 0.05 para 5%)
-            # Se o valor for maior que 1.0, assumimos que é uma porcentagem e o convertemos para decimal.
-            if dy > 1.0: 
-                return dy / 100.0
-            return dy
-
-        # 3. Se nenhum dos anteriores estiver disponível, tenta calcular usando dividendRate e regularMarketPrice
-        # dividendRate é o dividendo anual por ação
-        dividend_rate = ticker_info.get("dividendRate")
-        regular_market_price = ticker_info.get("regularMarketPrice")
-
-        if dividend_rate is not None and regular_market_price is not None and regular_market_price > 0:
-            return dividend_rate / regular_market_price
+        # Obtém o dividendo anual por ação
+        dividend_rate = ticker_info.get("trailingAnnualDividendRate")
+        
+        # Obtém o preço atual da ação
+        current_price = ticker_info.get("regularMarketPrice")
+        
+        # Calcula o DY se ambos os valores estiverem disponíveis
+        if dividend_rate is not None and current_price is not None and current_price > 0:
+            dividend_yield = dividend_rate / current_price
+            return dividend_yield
+        
+        # Fallback: tenta obter o DY pré-calculado do yfinance
+        # Mas verifica se está em formato decimal ou percentual
+        dy_precalculado = ticker_info.get("trailingAnnualDividendYield")
+        if dy_precalculado is not None:
+            # Se o valor for maior que 1, assume que está em percentual e converte
+            if dy_precalculado > 1.0:
+                return dy_precalculado / 100.0
+            return dy_precalculado
+        
+        # Último fallback: dividendYield
+        dy_fallback = ticker_info.get("dividendYield")
+        if dy_fallback is not None:
+            if dy_fallback > 1.0:
+                return dy_fallback / 100.0
+            return dy_fallback
         
         return None
 
