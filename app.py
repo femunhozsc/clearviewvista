@@ -52,8 +52,12 @@ def calcular_indicadores_avancados(info):
         vpa = total_equity / shares_outstanding
     indicadores['vpa'] = vpa
     
-    # Dividend Yield - Usa diretamente do yfinance
-    indicadores['dividend_yield'] = info.get('dividendYield', 0)
+    # Dividend Yield CORRETO - usando preço atual
+    div_rate = info.get('trailingAnnualDividendRate')
+    if div_rate and preco_atual and preco_atual > 0:
+        indicadores['dividend_yield'] = div_rate / preco_atual
+    else:
+        indicadores['dividend_yield'] = info.get('dividendYield', 0)
     
     # P/Ativo Total
     if market_cap and total_assets and total_assets > 0:
@@ -86,7 +90,6 @@ def calcular_indicadores_avancados(info):
         indicadores['valor_graham'] = math.sqrt(22.5 * lpa * vpa)
     
     # Preço Teto (Bazin) - assumindo 6% de yield mínimo
-    div_rate = info.get('trailingAnnualDividendRate')
     if div_rate and div_rate > 0:
         indicadores['preco_teto'] = div_rate / 0.06
     
@@ -210,8 +213,9 @@ def get_dados_rankings_com_cache():
 
             var_pct_ratio = (var_monetaria / fech_anterior) if var_monetaria is not None and fech_anterior and fech_anterior != 0 else 0.0
             
-            # Dividend Yield - Usa diretamente do yfinance
-            dividend_yield_calculado = info.get('dividendYield', 0)
+            # Dividend Yield CORRETO - usando preço atual
+            div_rate = info.get('trailingAnnualDividendRate')
+            dividend_yield_calculado = (div_rate / preco_atual) if div_rate and preco_atual and preco_atual > 0 else 0.0
             
             if market_cap and preco_atual is not None:
                 all_stocks_data.append({

@@ -14,14 +14,6 @@ from dateutil.relativedelta import relativedelta
 import math
 import re
 
-# Importa o scraper do Status Invest
-try:
-    from status_invest_scraper import StatusInvestScraper
-    STATUS_INVEST_AVAILABLE = True
-except ImportError:
-    STATUS_INVEST_AVAILABLE = False
-    print("⚠️  Status Invest scraper não disponível")
-
 class ClearviewVista:
     """
     Motor de dados para análise de ativos financeiros.
@@ -31,21 +23,15 @@ class ClearviewVista:
         self.tickers_map = {}
         self.nomes_map = {}
         self.lista_completa_ativos = []
-        
-        # Inicializa o scraper do Status Invest
-        if STATUS_INVEST_AVAILABLE:
-            self.status_invest = StatusInvestScraper()
-            print("✅ Status Invest scraper inicializado")
-        else:
-            self.status_invest = None
 
         print("Carregando base de dados de ativos...")
         self.carregar_dados_csv("/home/ubuntu/app/acoes-listadas-b3.csv", "EQUITY", delimiter=",")
         self.carregar_dados_csv("/home/ubuntu/app/fundosListados_utf8.csv", "MUTUALFUND", delimiter=";")
+        # self.carregar_dados_csv("/home/ubuntu/app/etfs-listadas-b3.csv", "ETF", delimiter=",") # Removido pois o arquivo não foi encontrado
         print(f"✅ Base de dados carregada com {len(self.lista_completa_ativos)} ativos para sugestão.")
         
         if not DIFFLIB_AVAILABLE:
-            print("\n⚠️  Atenção: A biblioteca 'difflib' não foi encontrada.")
+            print("\n⚠️  Atenção: A biblioteca \'difflib\' não foi encontrada.")
             print("  A pesquisa por nome aproximado de empresa estará desativada.\n")
 
         self.traducoes = {
@@ -68,7 +54,7 @@ class ClearviewVista:
                         nome_idx = i
                 
                 if ticker_idx == -1 or nome_idx == -1:
-                    print(f"  - ⚠️  Aviso: Não foi possível identificar as colunas em '{arquivo_csv}'. Pulando.")
+                    print(f"  - ⚠️  Aviso: Não foi possível identificar as colunas em \'{arquivo_csv}\'. Pulando.")
                     return
                 
                 count = 0
@@ -95,12 +81,12 @@ class ClearviewVista:
                             })
                             count += 1
                 if count > 0:
-                    print(f"  - Arquivo '{arquivo_csv}' ({tipo_ativo}): {count} tickers adicionados.")
+                    print(f"  - Arquivo \'{arquivo_csv}\' ({tipo_ativo}): {count} tickers adicionados.")
 
         except FileNotFoundError:
-             print(f"  - ⚠️  Aviso: Arquivo '{arquivo_csv}' não encontrado.")
+             print(f"  - ⚠️  Aviso: Arquivo \'{arquivo_csv}\' não encontrado.")
         except Exception as e:
-            print(f"❌ Erro ao carregar o arquivo '{arquivo_csv}': {e}")
+            print(f"❌ Erro ao carregar o arquivo \'{arquivo_csv}\': {e}")
 
 
     def pesquisar_ativo(self, comando):
@@ -138,55 +124,41 @@ class ClearviewVista:
         except Exception:
             return None
 
-    def calcular_dividend_yield_confiavel(self, info, ticker):
-        """
-        Calcula o Dividend Yield de forma confiável usando múltiplas fontes.
-        Prioridade: Status Invest > Cálculo Manual > yfinance
-        Retorna sempre em formato decimal (0.1631 = 16,31%)
-        """
-        if not info:
-            return 0
+    def calcular_dividend_yield(self, ticker_info):
+        if not ticker_info: return None
+
+        # 1. Tenta obter o 'trailingAnnualDividendYield' que é geralmente mais confiável como decimal
+        dy = ticker_info.get("trailingAnnualDividendYield")
+        if dy is not None: return dy
+
+        # 2. Se 'trailingAnnualDividendYield' não estiver disponível, tenta 'dividendYield'
+        dy = ticker_info.get("dividendYield")
+        if dy is not None:
+            # yfinance pode retornar dividendYield como um valor percentual (ex: 5.0 para 5%) ou decimal (ex: 0.05 para 5%)
+            # Se o valor for maior que 1.0, assumimos que é uma porcentagem e o convertemos para decimal.
+            if dy > 1.0: 
+                return dy / 100.0
+            return dy
+
+        # 3. Se nenhum dos anteriores estiver disponível, tenta calcular usando dividendRate e regularMarketPrice
+        # dividendRate é o dividendo anual por ação
+        dividend_rate = ticker_info.get("dividendRate")
+        regular_market_price = ticker_info.get("regularMarketPrice")
+
+        if dividend_rate is not None and regular_market_price is not None and regular_market_price > 0:
+            return dividend_rate / regular_market_price
         
-        # ESTRATÉGIA 1: Status Invest (fonte brasileira mais confiável)
-        if self.status_invest and info.get('quoteType') == 'EQUITY':
-            try:
-                dy_status = self.status_invest.buscar_dividend_yield(ticker)
-                if dy_status and 0 <= dy_status <= 0.5:
-                    print(f"✅ Usando DY do Status Invest para {ticker}: {dy_status*100:.2f}%")
-                    return dy_status
-            except Exception as e:
-                print(f"⚠️  Erro ao buscar DY do Status Invest: {e}")
-        
-        # ESTRATÉGIA 2: Cálculo manual usando dados do yfinance
-        div_rate = info.get('trailingAnnualDividendRate')
-        preco = info.get('regularMarketPrice')
-        
-        if div_rate and preco and preco > 0:
-            dy = div_rate / preco
-            if 0 <= dy <= 0.5:
-                print(f"✅ Usando DY calculado manualmente para {ticker}: {dy*100:.2f}%")
-                return dy
-        
-        # ESTRATÉGIA 3: Usar valor pré-calculado do yfinance (menos confiável)
-        dy = info.get('trailingAnnualDividendYield') or info.get('dividendYield')
-        
-        if dy and dy != 0:
-            dy_normalizado = dy / 100 if dy > 1 else dy
-            if 0 <= dy_normalizado <= 0.5:
-                print(f"⚠️  Usando DY do yfinance para {ticker}: {dy_normalizado*100:.2f}%")
-                return dy_normalizado
-        
-        return 0
+        return None
 
     def buscar_dados_ativo(self, ticker):
         if ticker in self.cache: return self.cache[ticker]
 
         dados = self._fetch_ticker_data(ticker)
         if dados:
-            # Calcula o Dividend Yield confiável e substitui no info
-            dy_confiavel = self.calcular_dividend_yield_confiavel(dados["info"], ticker)
-            dados["info"]["dividendYield"] = dy_confiavel
-            
+            # Calcula e adiciona o Dividend Yield aos dados do ativo
+            dividend_yield = self.calcular_dividend_yield(dados["info"])
+            if dividend_yield is not None:
+                dados["info"]["dividendYield"] = dividend_yield
             self.cache[ticker] = dados
             return dados
 
