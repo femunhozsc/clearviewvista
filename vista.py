@@ -14,6 +14,14 @@ from dateutil.relativedelta import relativedelta
 import math
 import re
 
+# Importa o scraper do Status Invest
+try:
+    from status_invest_scraper import StatusInvestScraper
+    STATUS_INVEST_AVAILABLE = True
+except ImportError:
+    STATUS_INVEST_AVAILABLE = False
+    print("⚠️  Status Invest scraper não disponível")
+
 class ClearviewVista:
     """
     Motor de dados para análise de ativos financeiros.
@@ -23,11 +31,17 @@ class ClearviewVista:
         self.tickers_map = {}
         self.nomes_map = {}
         self.lista_completa_ativos = []
+        
+        # Inicializa o scraper do Status Invest
+        if STATUS_INVEST_AVAILABLE:
+            self.status_invest = StatusInvestScraper()
+            print("✅ Status Invest scraper inicializado")
+        else:
+            self.status_invest = None
 
         print("Carregando base de dados de ativos...")
         self.carregar_dados_csv("/home/ubuntu/app/acoes-listadas-b3.csv", "EQUITY", delimiter=",")
         self.carregar_dados_csv("/home/ubuntu/app/fundosListados_utf8.csv", "MUTUALFUND", delimiter=";")
-        # self.carregar_dados_csv("/home/ubuntu/app/etfs-listadas-b3.csv", "ETF", delimiter=",") # Removido pois o arquivo não foi encontrado
         print(f"✅ Base de dados carregada com {len(self.lista_completa_ativos)} ativos para sugestão.")
         
         if not DIFFLIB_AVAILABLE:
@@ -124,37 +138,44 @@ class ClearviewVista:
         except Exception:
             return None
 
-    def calcular_dividend_yield_confiavel(self, info):
+    def calcular_dividend_yield_confiavel(self, info, ticker):
         """
-        Calcula o Dividend Yield de forma confiável usando múltiplas estratégias.
+        Calcula o Dividend Yield de forma confiável usando múltiplas fontes.
+        Prioridade: Status Invest > Cálculo Manual > yfinance
         Retorna sempre em formato decimal (0.1631 = 16,31%)
         """
         if not info:
             return 0
         
-        # ESTRATÉGIA 1: Cálculo manual (mais confiável)
-        # Usa dividendo anual e preço atual
+        # ESTRATÉGIA 1: Status Invest (fonte brasileira mais confiável)
+        if self.status_invest and info.get('quoteType') == 'EQUITY':
+            try:
+                dy_status = self.status_invest.buscar_dividend_yield(ticker)
+                if dy_status and 0 <= dy_status <= 0.5:
+                    print(f"✅ Usando DY do Status Invest para {ticker}: {dy_status*100:.2f}%")
+                    return dy_status
+            except Exception as e:
+                print(f"⚠️  Erro ao buscar DY do Status Invest: {e}")
+        
+        # ESTRATÉGIA 2: Cálculo manual usando dados do yfinance
         div_rate = info.get('trailingAnnualDividendRate')
         preco = info.get('regularMarketPrice')
         
         if div_rate and preco and preco > 0:
             dy = div_rate / preco
-            # Validação: DY entre 0% e 50% é razoável
             if 0 <= dy <= 0.5:
+                print(f"✅ Usando DY calculado manualmente para {ticker}: {dy*100:.2f}%")
                 return dy
         
-        # ESTRATÉGIA 2: Usar valor pré-calculado do yfinance com normalização
+        # ESTRATÉGIA 3: Usar valor pré-calculado do yfinance (menos confiável)
         dy = info.get('trailingAnnualDividendYield') or info.get('dividendYield')
         
         if dy and dy != 0:
-            # Normalização: se valor > 1, assume que está em percentual
             dy_normalizado = dy / 100 if dy > 1 else dy
-            
-            # Validação: DY entre 0% e 50% é razoável
             if 0 <= dy_normalizado <= 0.5:
+                print(f"⚠️  Usando DY do yfinance para {ticker}: {dy_normalizado*100:.2f}%")
                 return dy_normalizado
         
-        # Se todas as estratégias falharem, retorna 0
         return 0
 
     def buscar_dados_ativo(self, ticker):
@@ -163,7 +184,7 @@ class ClearviewVista:
         dados = self._fetch_ticker_data(ticker)
         if dados:
             # Calcula o Dividend Yield confiável e substitui no info
-            dy_confiavel = self.calcular_dividend_yield_confiavel(dados["info"])
+            dy_confiavel = self.calcular_dividend_yield_confiavel(dados["info"], ticker)
             dados["info"]["dividendYield"] = dy_confiavel
             
             self.cache[ticker] = dados
