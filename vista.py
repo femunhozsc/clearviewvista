@@ -124,11 +124,48 @@ class ClearviewVista:
         except Exception:
             return None
 
+    def calcular_dividend_yield_confiavel(self, info):
+        """
+        Calcula o Dividend Yield de forma confiável usando múltiplas estratégias.
+        Retorna sempre em formato decimal (0.1631 = 16,31%)
+        """
+        if not info:
+            return 0
+        
+        # ESTRATÉGIA 1: Cálculo manual (mais confiável)
+        # Usa dividendo anual e preço atual
+        div_rate = info.get('trailingAnnualDividendRate')
+        preco = info.get('regularMarketPrice')
+        
+        if div_rate and preco and preco > 0:
+            dy = div_rate / preco
+            # Validação: DY entre 0% e 50% é razoável
+            if 0 <= dy <= 0.5:
+                return dy
+        
+        # ESTRATÉGIA 2: Usar valor pré-calculado do yfinance com normalização
+        dy = info.get('trailingAnnualDividendYield') or info.get('dividendYield')
+        
+        if dy and dy != 0:
+            # Normalização: se valor > 1, assume que está em percentual
+            dy_normalizado = dy / 100 if dy > 1 else dy
+            
+            # Validação: DY entre 0% e 50% é razoável
+            if 0 <= dy_normalizado <= 0.5:
+                return dy_normalizado
+        
+        # Se todas as estratégias falharem, retorna 0
+        return 0
+
     def buscar_dados_ativo(self, ticker):
         if ticker in self.cache: return self.cache[ticker]
 
         dados = self._fetch_ticker_data(ticker)
         if dados:
+            # Calcula o Dividend Yield confiável e substitui no info
+            dy_confiavel = self.calcular_dividend_yield_confiavel(dados["info"])
+            dados["info"]["dividendYield"] = dy_confiavel
+            
             self.cache[ticker] = dados
             return dados
 
