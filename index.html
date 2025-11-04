@@ -119,7 +119,7 @@
 <body class="bg-black text-gray-200 font-sans">
     <header class="bg-black/70 backdrop-blur-lg shadow-lg sticky top-0 z-50 border-b border-zinc-800">
         <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
-            <a href="/" class="flex items-center flex-shrink-0 transition-transform hover:scale-105">
+            <a href="#" onclick="renderizarPaginaInicial(event)" class="flex items-center flex-shrink-0 transition-transform hover:scale-105">
                 <img src="logo.png" alt="Clearview Vista Logo" class="h-12"> 
             </a>
 
@@ -127,24 +127,24 @@
                 <div class="relative dropdown">
                     <button class="hover:text-amber-400 transition-colors flex items-center py-2">Ações <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
                     <div class="dropdown-menu absolute hidden bg-zinc-800 rounded-md shadow-xl top-full mt-0 py-2 w-48 border border-zinc-700">
-                        <a href="/comparador" class="block px-4 py-2 text-sm text-gray-300 hover:bg-zinc-700 hover:text-amber-400">Comparador de Ativos</a>
-                        <a href="/simulador" class="block px-4 py-2 text-sm text-gray-300 hover:bg-zinc-700 hover:text-amber-400">Simulador</a>
+                        <a href="#" onclick="renderizarComparador('acoes', event)" class="block px-4 py-2 text-sm text-gray-300 hover:bg-zinc-700 hover:text-amber-400">Comparador de Ativos</a>
+                        <a href="#" onclick="renderizarSimulador('acoes', event)" class="block px-4 py-2 text-sm text-gray-300 hover:bg-zinc-700 hover:text-amber-400">Simulador</a>
                     </div>
                 </div>
                 <div class="relative dropdown">
                      <button class="hover:text-amber-400 transition-colors flex items-center py-2">Fundos <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
                      <div class="dropdown-menu absolute hidden bg-zinc-800 rounded-md shadow-xl top-full mt-0 py-2 w-48 border border-zinc-700">
-                        <a href="/comparador" class="block px-4 py-2 text-sm text-gray-300 hover:bg-zinc-700 hover:text-amber-400">Comparador</a>
-                         <a href="/simulador" class="block px-4 py-2 text-sm text-gray-300 hover:bg-zinc-700 hover:text-amber-400">Simulador</a>
+                        <a href="#" onclick="renderizarComparador('fiis', event)" class="block px-4 py-2 text-sm text-gray-300 hover:bg-zinc-700 hover:text-amber-400">Comparador</a>
+                         <a href="#" onclick="renderizarSimulador('fiis', event)" class="block px-4 py-2 text-sm text-gray-300 hover:bg-zinc-700 hover:text-amber-400">Simulador</a>
                     </div>
                 </div>
-                <a href="/internacional" class="hover:text-amber-400 transition-colors">Internacional</a>
-                <a href="/noticias" class="hover:text-amber-400 transition-colors">Notícias</a>
-                <a href="/carteiras" class="hover:text-amber-400 transition-colors">Carteiras</a>
+                <a href="#" class="hover:text-amber-400 transition-colors">Internacional</a>
+                <a href="#" class="hover:text-amber-400 transition-colors">Notícias</a>
+                <a href="#" class="hover:text-amber-400 transition-colors">Carteiras</a>
             </div>
 
             <div class="flex items-center space-x-4">
-                 <a href="/login" class="hidden md:flex items-center space-x-2 text-gray-300 font-medium border border-transparent hover:border-amber-400 hover:text-amber-400 rounded-full px-4 py-2 transition-colors">
+                 <a href="#" class="hidden md:flex items-center space-x-2 text-gray-300 font-medium border border-transparent hover:border-amber-400 hover:text-amber-400 rounded-full px-4 py-2 transition-colors">
                      <span>Login</span>
                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                  </a>
@@ -162,20 +162,20 @@
         </div>
         <nav class="flex flex-col space-y-2 text-lg">
             <h3 class="text-amber-400 font-semibold text-sm uppercase tracking-wider">Ações</h3>
-            <a href="/comparador" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg><span>Comparador</span></a>
-            <a href="/simulador" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg><span>Simulador</span></a>
+            <a href="#" onclick="renderizarComparador('acoes', event); fecharMenuMobile();" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg><span>Comparador</span></a>
+            <a href="#" onclick="renderizarSimulador('acoes', event); fecharMenuMobile();" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg><span>Simulador</span></a>
             
             <h3 class="text-amber-400 font-semibold text-sm uppercase tracking-wider pt-4">Fundos</h3>
-            <a href="/comparador" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg><span>Comparador</span></a>
-            <a href="/simulador" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg><span>Simulador</span></a>
+            <a href="#" onclick="renderizarComparador('fiis', event); fecharMenuMobile();" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg><span>Comparador</span></a>
+            <a href="#" onclick="renderizarSimulador('fiis', event); fecharMenuMobile();" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg><span>Simulador</span></a>
             
              <hr class="border-zinc-700 my-4">
-             <a href="/internacional" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><span>Internacional</span></a>
-             <a href="/noticias" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><span>Notícias</span></a>
-             <a href="/carteiras" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><span>Carteiras</span></a>
+             <a href="#" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><span>Internacional</span></a>
+             <a href="#" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><span>Notícias</span></a>
+             <a href="#" class="text-gray-300 hover:bg-zinc-800 rounded-md p-3 flex items-center space-x-3"><span>Carteiras</span></a>
             
              <div class="absolute bottom-6 left-6 right-6">
-                 <a href="/login" class="flex items-center justify-center space-x-2 text-gray-300 font-medium border border-zinc-700 hover:border-amber-400 hover:text-amber-400 rounded-full px-4 py-3 transition-colors">
+                 <a href="#" class="flex items-center justify-center space-x-2 text-gray-300 font-medium border border-zinc-700 hover:border-amber-400 hover:text-amber-400 rounded-full px-4 py-3 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     <span>Login</span>
                  </a>
@@ -205,7 +205,6 @@
         </div>
     </div>
 
-    <script src="router.js"></script>
     <script>
         const mainContainer = document.getElementById('main-container');
         let currentChart = null;
@@ -263,17 +262,8 @@
             const searchButton = document.getElementById('heroSearchButton');
 
             searchInput.addEventListener('input', (e) => mostrarSugestoes(e.target, document.getElementById('suggestion-box')));
-            searchInput.addEventListener('keypress', (e) => { 
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const termo = searchInput.value.trim();
-                    if (termo) navigateToAsset(termo);
-                }
-            });
-            searchButton.addEventListener('click', () => { 
-                const termo = searchInput.value.trim();
-                if (termo) navigateToAsset(termo);
-            });
+            searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarAtivo(e.target.value); });
+            searchButton.addEventListener('click', () => { buscarAtivo(searchInput.value); });
             document.addEventListener('click', (e) => {
                 const suggestionBox = document.getElementById('suggestion-box');
                 const searchContainer = document.querySelector('.relative.max-w-xl.mx-auto');
@@ -289,7 +279,7 @@
             let cardsHTML = '<div class="text-center p-4 text-gray-500">Nenhum dado para exibir.</div>';
             if (ativos && ativos.length > 0) {
                 cardsHTML = ativos.map((ativo, index) => `
-                    <div onclick="navigateToAsset('${ativo.ticker}')" class="bg-zinc-900/70 p-4 rounded-lg flex items-center fade-in-up cursor-pointer hover:bg-zinc-800 transition-colors" style="--animation-delay: ${index * 100}ms;">
+                    <div onclick="buscarAtivo('${ativo.ticker}')" class="bg-zinc-900/70 p-4 rounded-lg flex items-center fade-in-up cursor-pointer hover:bg-zinc-800 transition-colors" style="--animation-delay: ${index * 100}ms;">
                         <div class="mr-3 flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-8 h-8')}</div>
                         <div class="flex-1 flex justify-between items-center">
                             <div>
@@ -307,7 +297,7 @@
             return `<div class="card-background p-6 flex flex-col h-full">
                         <h3 class="text-xl font-bold mb-5 text-white border-l-4 ${corBorda} pl-4">${titulo}</h3>
                         <div class="grid grid-cols-1 gap-4 flex-grow">${cardsHTML}</div>
-                        <button onclick="router.navigate('/ranking/${tipoRanking}')" class="mt-4 text-center text-amber-400 hover:text-amber-300 font-semibold py-2 rounded-lg transition-colors">Ver mais</button>
+                        <button onclick="mostrarRankingCompleto('${tipoRanking}', '${titulo}')" class="mt-4 text-center text-amber-400 hover:text-amber-300 font-semibold py-2 rounded-lg transition-colors">Ver mais</button>
                     </div>`;
         }
         
@@ -315,7 +305,7 @@
             let cardsHTML = '<div class="text-center p-4 text-gray-500">Nenhum dado para exibir.</div>';
             if (ativos && ativos.length > 0) {
                 cardsHTML = ativos.map((ativo, index) => `
-                    <div onclick="navigateToAsset('${ativo.ticker}')" class="bg-zinc-900/70 p-4 rounded-lg flex items-center fade-in-up cursor-pointer hover:bg-zinc-800 transition-colors" style="--animation-delay: ${index * 100}ms;">
+                    <div onclick="buscarAtivo('${ativo.ticker}')" class="bg-zinc-900/70 p-4 rounded-lg flex items-center fade-in-up cursor-pointer hover:bg-zinc-800 transition-colors" style="--animation-delay: ${index * 100}ms;">
                         <div class="mr-3 flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-8 h-8')}</div>
                         <div class="flex-1 flex justify-between items-center">
                             <div>
@@ -332,7 +322,7 @@
             return `<div class="card-background p-6 flex flex-col h-full">
                         <h3 class="text-xl font-bold mb-5 text-white border-l-4 ${corBorda} pl-4">${titulo}</h3>
                         <div class="grid grid-cols-1 gap-4 flex-grow">${cardsHTML}</div>
-                        <button onclick="router.navigate('/ranking/${tipoRanking}')" class="mt-4 text-center text-amber-400 hover:text-amber-300 font-semibold py-2 rounded-lg transition-colors">Ver mais</button>
+                        <button onclick="mostrarRankingCompleto('${tipoRanking}', '${titulo}')" class="mt-4 text-center text-amber-400 hover:text-amber-300 font-semibold py-2 rounded-lg transition-colors">Ver mais</button>
                     </div>`;
         }
         
@@ -464,7 +454,7 @@
                 const data = await response.json();
                 
                 const maisBuscadasHTML = data.mais_buscadas.map((ativo, index) => `
-                    <div onclick="navigateToAsset('${ativo.ticker}')" class="carousel-item card-background card-hover p-4 cursor-pointer fade-in-up flex-shrink-0" style="--animation-delay: ${index * 100}ms;">
+                    <div onclick="buscarAtivo('${ativo.ticker}')" class="carousel-item card-background card-hover p-4 cursor-pointer fade-in-up flex-shrink-0" style="--animation-delay: ${index * 100}ms;">
                         <div class="flex flex-col items-center justify-center h-full space-y-3">
                             <div class="flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-12 h-12')}</div>
                             <div class="text-center w-full">
@@ -490,7 +480,7 @@
                         const precoSecundario = ativo.preco_usd ? `<p class="text-md text-gray-400">${ativo.preco_usd}</p>` : '';
                         
                         mercadoHTML += `
-                            <div onclick="navigateToAsset('${ativo.ticker_busca}')" class="card-background card-hover p-4 cursor-pointer fade-in-up" style="--animation-delay: ${400 + index * 100}ms;">
+                            <div onclick="buscarAtivo('${ativo.ticker_busca}')" class="card-background card-hover p-4 cursor-pointer fade-in-up" style="--animation-delay: ${400 + index * 100}ms;">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-3">
                                         ${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-10 h-10')}
@@ -674,7 +664,7 @@
                         inputElement.value = item.dataset.ticker;
                         suggestionBoxElement.classList.add("hidden");
                         if (triggerSearch) {
-                            navigateToAsset(item.dataset.ticker);
+                            buscarAtivo(item.dataset.ticker);
                         }
                     });
                 });
@@ -720,7 +710,7 @@
                     }
 
                     contentHTML += `
-                        <div onclick="navigateToAsset('${ativo.ticker}'); document.getElementById('rankingModal').classList.add('hidden');" class="bg-zinc-900/70 p-3 rounded-lg flex items-center cursor-pointer hover:bg-zinc-800 transition-colors">
+                        <div onclick="buscarAtivo('${ativo.ticker}'); document.getElementById('rankingModal').classList.add('hidden');" class="bg-zinc-900/70 p-3 rounded-lg flex items-center cursor-pointer hover:bg-zinc-800 transition-colors">
                             <span class="mr-4 text-gray-500 font-bold w-6">${index + 1}.</span>
                             <div class="mr-3 flex-shrink-0">${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-6 h-6')}</div>
                             <div class="flex-1 flex justify-between items-center">
@@ -793,24 +783,63 @@
             
             currentChart = new Chart(ctx, {
                 type: 'line',
-                data: { labels: [], datasets: [{ label: 'Preço', data: [] }] },
+                data: { labels: [], datasets: [{ label: 'Preço', data: [], borderWidth: 2, pointRadius: 0, tension: 0.4 }] },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 750,
+                        easing: 'easeInOutQuart'
+                    },
                     scales: {
-                        x: { type: 'time', time: { unit: 'day', tooltipFormat: 'dd/MM/yy' }, display: false },
-                        y: { ticks: { color: '#a1a1aa', font: { size: 12 } }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                        x: { 
+                            type: 'time', 
+                            time: { unit: 'day', tooltipFormat: 'dd/MM/yy' }, 
+                            display: true,
+                            grid: { display: false },
+                            ticks: { 
+                                color: '#71717a',
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 8
+                            }
+                        },
+                        y: { 
+                            ticks: { 
+                                color: '#a1a1aa', 
+                                font: { size: 12 },
+                                callback: (value) => `R$ ${value.toFixed(2)}`
+                            }, 
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        }
                     },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            enabled: true, mode: 'index', intersect: false,
-                            backgroundColor: '#18181b', titleColor: '#facc15', titleFont: { weight: 'bold', size: 14 },
-                            bodyColor: '#d4d4d8', bodyFont: { size: 12 }, borderColor: '#3f3f46',
-                            borderWidth: 1, padding: 12, caretSize: 8, cornerRadius: 8, displayColors: false,
-                            callbacks: { label: (ctx) => `Fechamento: R$ ${ctx.parsed.y.toFixed(2)}` }
+                            enabled: true, 
+                            mode: 'index', 
+                            intersect: false,
+                            backgroundColor: '#18181b', 
+                            titleColor: '#facc15', 
+                            titleFont: { weight: 'bold', size: 14 },
+                            bodyColor: '#d4d4d8', 
+                            bodyFont: { size: 12 }, 
+                            borderColor: '#3f3f46',
+                            borderWidth: 1, 
+                            padding: 12, 
+                            caretSize: 8, 
+                            cornerRadius: 8, 
+                            displayColors: false,
+                            callbacks: { 
+                                label: (ctx) => `Fechamento: R$ ${ctx.parsed.y.toFixed(2)}` 
+                            }
                         }
                     },
-                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                    interaction: { 
+                        mode: 'nearest', 
+                        axis: 'x', 
+                        intersect: false 
+                    }
                 }
             });
             atualizarGrafico(historico, periodoInicial);
@@ -917,8 +946,9 @@
                     data: historico.datasets[key],
                     borderColor: colors[index % colors.length],
                     backgroundColor: 'transparent',
+                    borderWidth: 2,
                     pointRadius: 0,
-                    tension: 0.1
+                    tension: 0.4
                 }
             });
 
@@ -929,20 +959,52 @@
                     datasets: datasets
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false,
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 750,
+                        easing: 'easeInOutQuart'
+                    },
                     scales: {
-                        x: { type: 'time', time: { unit: 'month', tooltipFormat: 'dd/MM/yy' }, grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#a1a1aa' } },
-                        y: { ticks: { color: '#a1a1aa', callback: (value) => `${value}` }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                        x: { 
+                            type: 'time', 
+                            time: { unit: 'month', tooltipFormat: 'dd/MM/yy' }, 
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                            ticks: { 
+                                color: '#a1a1aa',
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 8
+                            } 
+                        },
+                        y: { 
+                            ticks: { 
+                                color: '#a1a1aa', 
+                                callback: (value) => `${value}` 
+                            }, 
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' } 
+                        }
                     },
                     plugins: {
                         legend: { labels: { color: '#d4d4d8' } },
                         tooltip: {
-                            enabled: true, mode: 'index', intersect: false,
-                            backgroundColor: '#18181b', titleColor: '#facc15', titleFont: { weight: 'bold' },
-                            bodyColor: '#d4d4d8', borderColor: '#3f3f46', borderWidth: 1, padding: 12
+                            enabled: true, 
+                            mode: 'index', 
+                            intersect: false,
+                            backgroundColor: '#18181b', 
+                            titleColor: '#facc15', 
+                            titleFont: { weight: 'bold' },
+                            bodyColor: '#d4d4d8', 
+                            borderColor: '#3f3f46', 
+                            borderWidth: 1, 
+                            padding: 12
                         }
                     },
-                    interaction: { mode: 'index', axis: 'x', intersect: false }
+                    interaction: { 
+                        mode: 'index', 
+                        axis: 'x', 
+                        intersect: false 
+                    }
                 }
             });
         }
@@ -968,16 +1030,12 @@
         }
         
         document.addEventListener('DOMContentLoaded', (event) => {
+            renderizarPaginaInicial();
             carregarListaDeAtivos();
             inicializarModal();
             document.getElementById('hamburger-btn')?.addEventListener('click', abrirMenuMobile);
             document.getElementById('close-menu-btn')?.addEventListener('click', fecharMenuMobile);
             document.getElementById('menu-overlay')?.addEventListener('click', fecharMenuMobile);
-            
-            const mobileLinks = document.querySelectorAll('#mobile-menu a');
-            mobileLinks.forEach(link => {
-                link.addEventListener('click', fecharMenuMobile);
-            });
         });
     </script>
 </body>
