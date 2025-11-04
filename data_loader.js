@@ -559,12 +559,46 @@ function buscarSugestoes(termo) {
     ).slice(0, 8);
 }
 
+// Funções de formatação (para uso em comparator.js e outros)
+function formatarMoeda(valor) {
+    if (valor === null || valor === undefined) return 'N/A';
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatarPorcentagem(valor) {
+    if (valor === null || valor === undefined) return 'N/A';
+    return (valor * 100).toFixed(2) + '%';
+}
+
+function formatarNumero(valor) {
+    if (valor === null || valor === undefined) return 'N/A';
+    return valor.toFixed(2).replace('.', ',');
+}
+
+function formatarMilhoes(valor) {
+    if (valor === null || valor === undefined) return 'N/A';
+    if (valor >= 1e12) {
+        return (valor / 1e12).toFixed(2).replace('.', ',') + ' T';
+    }
+    if (valor >= 1e9) {
+        return (valor / 1e9).toFixed(2).replace('.', ',') + ' B';
+    }
+    if (valor >= 1e6) {
+        return (valor / 1e6).toFixed(2).replace('.', ',') + ' M';
+    }
+    return valor.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+}
+
 // Exporta para uso global
 window.DADOS_ATIVOS = {
     ACOES_B3_DATA,
     FUNDOS_DATA,
     TODOS_ATIVOS,
-    buscarSugestoes
+    buscarSugestoes,
+    formatarMoeda,
+    formatarPorcentagem,
+    formatarNumero,
+    formatarMilhoes
 };
 
 
