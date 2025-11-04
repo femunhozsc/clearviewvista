@@ -709,4 +709,3 @@ renderizarPaginaInicial = async (event) => {
     await originalRenderizarPaginaInicial(event);
     setupCarousel();
 };
-
