@@ -175,3 +175,30 @@ class ClearviewVista:
             if abs(valor) >= 1e6: return f"{prefixo}{valor / 1e6:,.2f} Mi"
             return f"{prefixo}{valor:,.2f}"
         except (ValueError, TypeError): return "N/D"
+
+
+
+    def calcular_dividend_yield_anualizado(self, ticker_info, historico_precos):
+        if not ticker_info or historico_precos.empty: return None
+
+        # Tenta obter o dividendYield diretamente do yfinance
+        dy_yfinance = ticker_info.get("dividendYield")
+        if dy_yfinance is not None: return dy_yfinance
+
+        # Se não houver, calcula manualmente com base nos dividendos dos últimos 12 meses
+        try:
+            hoje = datetime.now(timezone("America/Sao_Paulo"))
+            um_ano_atras = hoje - relativedelta(years=1)
+            
+            dividendos = yf.Ticker(ticker_info["symbol"]).dividends
+            dividendos_ultimos_12m = dividendos[dividendos.index >= um_ano_atras]
+            
+            if not dividendos_ultimos_12m.empty:
+                total_dividendos = dividendos_ultimos_12m.sum()
+                preco_atual = ticker_info.get("regularMarketPrice")
+                if preco_atual and preco_atual > 0:
+                    return total_dividendos / preco_atual
+        except Exception as e:
+            print(f"Erro ao calcular DY anualizado para {ticker_info.get(\'symbol\', \'N/D\')}: {e}")
+        return None
+
