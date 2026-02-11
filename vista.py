@@ -229,6 +229,6 @@ class ClearviewVista:
                 if preco_atual and preco_atual > 0:
                     return total_dividendos / preco_atual
         except Exception as e:
-            print(f"Erro ao calcular DY anualizado para {ticker_info.get(\'symbol\', \'N/D\')}: {e}")
+            print(f"Erro ao calcular DY anualizado para {ticker_info.get('symbol', 'N/D')}: {e}")
         return None
 
