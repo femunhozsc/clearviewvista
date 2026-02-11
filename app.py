@@ -6,21 +6,14 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import time
 import copy
-import os
 
 # Importa a sua classe ClearviewVista do arquivo vista.py
 from vista import ClearviewVista
-from alpha_vantage_client import AlphaVantageClient
 
 # Cria a instância da sua classe.
 print("Iniciando o Clearview Vista...")
 vista_analyzer = ClearviewVista()
 print("Clearview Vista carregado e pronto.")
-
-# Inicializa cliente Alpha Vantage
-alpha_vantage_key = os.getenv('ALPHA_VANTAGE_KEY', 'L08YVAKZS7U2YZJB')
-alpha_client = AlphaVantageClient(alpha_vantage_key)
-print(f"Alpha Vantage API carregado com chave: {alpha_vantage_key[:10]}...")
 
 # Cria a aplicação Flask
 app = Flask(__name__, static_folder='.', static_url_path='')
@@ -155,7 +148,7 @@ def get_lista_ativos():
 
 @app.route('/api/homepage/destaques')
 def get_homepage_data():
-    """Fornece os top 5 de cada ranking para a página inicial - SEM PREÇOS."""
+    """Fornece os top 5 de cada ranking para a página inicial."""
     acoes_populares = ['PETR4', 'VALE3', 'ITUB4', 'BBDC4', 'BBAS3', 'MGLU3', 'WEGE3', 'ABEV3']
     
     mais_buscadas = []
@@ -166,6 +159,7 @@ def get_homepage_data():
             var_pct_ratio = (info.get('regularMarketChange', 0) / info.get('previousClose')) if info.get('previousClose') else 0
             mais_buscadas.append({
                 'ticker': ticker, 'nome': info.get('shortName'),
+                'preco': vista_analyzer.formatar_valor(info.get('regularMarketPrice'), tipo='moeda'),
                 'variacao': vista_analyzer.formatar_valor(var_pct_ratio, 'porcentagem'),
                 'eh_positivo': var_pct_ratio >= 0,
                 'quoteType': info.get('quoteType')
@@ -176,6 +170,7 @@ def get_homepage_data():
     def format_and_copy(stock_list, value_key, new_value_key, format_type):
         copied_list = copy.deepcopy(stock_list)
         for item in copied_list:
+            item['preco'] = vista_analyzer.formatar_valor(item.get('preco'), tipo='moeda')
             item[new_value_key] = vista_analyzer.formatar_valor(item.get(value_key, 0), format_type)
         return copied_list
     
@@ -205,16 +200,27 @@ def get_homepage_data():
             info_brl = dados_brl['info']
             var_pct_ratio = (info_brl.get('regularMarketChange', 0) / info_brl.get('previousClose')) if info_brl.get('previousClose') else 0.0
             
+            preco_formatado = 'moeda'
+            if key == 'IFIX':
+                preco_formatado = 'numero'
+            
             ativo_mercado = {
                 'ticker': key, 'nome': val['nome'], 'quoteType': info_brl.get('quoteType'),
+                'preco_brl': vista_analyzer.formatar_valor(info_brl.get('regularMarketPrice'), tipo=preco_formatado, moeda='R$'),
                 'eh_positivo': var_pct_ratio >= 0,
                 'variacao': vista_analyzer.formatar_valor(var_pct_ratio, 'porcentagem'),
                 'ticker_busca': val['ticker_brl']
             }
+
+            if 'ticker_usd' in val:
+                dados_usd = vista_analyzer.buscar_dados_ativo(val['ticker_usd'])
+                if dados_usd and dados_usd.get('info'):
+                    ativo_mercado['preco_usd'] = vista_analyzer.formatar_valor(dados_usd['info'].get('regularMarketPrice'), tipo='moeda', moeda='US$')
             
             dados_mercado.append(ativo_mercado)
     
     dados_mercado = dados_mercado[:4]
+
 
     return jsonify({
         'mais_buscadas': mais_buscadas,
@@ -249,6 +255,7 @@ def get_ranking_completo(ranking_type):
     for item in sorted_list:
         formatted_item = {
             'ticker': item['ticker'],
+            'preco': vista_analyzer.formatar_valor(item.get('preco'), tipo='moeda'),
             'variacao': vista_analyzer.formatar_valor(item.get('variacao_num', 0), 'porcentagem'),
             'eh_positivo': item.get('eh_positivo', False),
             'nome': vista_analyzer.tickers_map.get(f"{item['ticker']}.SA") or item['ticker'],
@@ -262,116 +269,39 @@ def get_ranking_completo(ranking_type):
 
     return jsonify(formatted_list)
 
-@app.route('/api/ativo/<string:ticker>/detalhes')
-def get_ativo_detalhes(ticker):
-    """Retorna detalhes completos de um ativo com indicadores da Alpha Vantage."""
-    ticker_clean = ticker.replace(".SA", "").upper()
-    
-    # Tenta obter dados do Yahoo Finance
-    dados_yfinance = vista_analyzer.buscar_dados_ativo(f"{ticker_clean}.SA")
-    
-    # Tenta obter dados da Alpha Vantage
-    quote_av = alpha_client.get_quote_endpoint(f"{ticker_clean}.SA")
-    daily_av = alpha_client.get_daily(f"{ticker_clean}.SA", outputsize='full')
-    
-    # Tenta obter indicadores técnicos
-    sma_20 = alpha_client.get_sma(f"{ticker_clean}.SA", time_period=20)
-    sma_50 = alpha_client.get_sma(f"{ticker_clean}.SA", time_period=50)
-    sma_200 = alpha_client.get_sma(f"{ticker_clean}.SA", time_period=200)
-    rsi = alpha_client.get_rsi(f"{ticker_clean}.SA", time_period=14)
-    macd = alpha_client.get_macd(f"{ticker_clean}.SA")
-    bbands = alpha_client.get_bbands(f"{ticker_clean}.SA", time_period=20)
-    atr = alpha_client.get_atr(f"{ticker_clean}.SA", time_period=14)
-    stoch = alpha_client.get_stoch(f"{ticker_clean}.SA")
-    adx = alpha_client.get_adx(f"{ticker_clean}.SA", time_period=14)
-    obv = alpha_client.get_obv(f"{ticker_clean}.SA")
-    
-    # Processa dados de histórico
-    historico_grafico = None
-    if daily_av:
-        df_daily = alpha_client.parse_daily_data(daily_av)
-        if df_daily is not None:
-            historico_grafico = {
-                'labels': df_daily.index.strftime('%Y-%m-%d').tolist(),
-                'data': df_daily['Close'].tolist()
-            }
-    
-    # Processa indicadores
-    indicadores = {}
-    
-    if sma_20:
-        df_sma20 = alpha_client.parse_indicator_data(sma_20, 'Technical Analysis: SMA')
-        if df_sma20 is not None and len(df_sma20) > 0:
-            indicadores['SMA_20'] = df_sma20.iloc[-1].get('SMA', 'N/D')
-    
-    if sma_50:
-        df_sma50 = alpha_client.parse_indicator_data(sma_50, 'Technical Analysis: SMA')
-        if df_sma50 is not None and len(df_sma50) > 0:
-            indicadores['SMA_50'] = df_sma50.iloc[-1].get('SMA', 'N/D')
-    
-    if sma_200:
-        df_sma200 = alpha_client.parse_indicator_data(sma_200, 'Technical Analysis: SMA')
-        if df_sma200 is not None and len(df_sma200) > 0:
-            indicadores['SMA_200'] = df_sma200.iloc[-1].get('SMA', 'N/D')
-    
-    if rsi:
-        df_rsi = alpha_client.parse_indicator_data(rsi, 'Technical Analysis: RSI')
-        if df_rsi is not None and len(df_rsi) > 0:
-            indicadores['RSI_14'] = df_rsi.iloc[-1].get('RSI', 'N/D')
-    
-    if macd:
-        df_macd = alpha_client.parse_indicator_data(macd, 'Technical Analysis: MACD')
-        if df_macd is not None and len(df_macd) > 0:
-            indicadores['MACD'] = df_macd.iloc[-1].get('MACD', 'N/D')
-            indicadores['MACD_Signal'] = df_macd.iloc[-1].get('MACD_Signal', 'N/D')
-            indicadores['MACD_Hist'] = df_macd.iloc[-1].get('MACD_Histogram', 'N/D')
-    
-    if bbands:
-        df_bbands = alpha_client.parse_indicator_data(bbands, 'Technical Analysis: BBANDS')
-        if df_bbands is not None and len(df_bbands) > 0:
-            indicadores['BB_Upper'] = df_bbands.iloc[-1].get('Real Upper Band', 'N/D')
-            indicadores['BB_Middle'] = df_bbands.iloc[-1].get('Real Middle Band', 'N/D')
-            indicadores['BB_Lower'] = df_bbands.iloc[-1].get('Real Lower Band', 'N/D')
-    
-    if atr:
-        df_atr = alpha_client.parse_indicator_data(atr, 'Technical Analysis: ATR')
-        if df_atr is not None and len(df_atr) > 0:
-            indicadores['ATR_14'] = df_atr.iloc[-1].get('ATR', 'N/D')
-    
-    if stoch:
-        df_stoch = alpha_client.parse_indicator_data(stoch, 'Technical Analysis: STOCH')
-        if df_stoch is not None and len(df_stoch) > 0:
-            indicadores['Stoch_K'] = df_stoch.iloc[-1].get('SlowK', 'N/D')
-            indicadores['Stoch_D'] = df_stoch.iloc[-1].get('SlowD', 'N/D')
-    
-    if adx:
-        df_adx = alpha_client.parse_indicator_data(adx, 'Technical Analysis: ADX')
-        if df_adx is not None and len(df_adx) > 0:
-            indicadores['ADX'] = df_adx.iloc[-1].get('ADX', 'N/D')
-    
-    if obv:
-        df_obv = alpha_client.parse_indicator_data(obv, 'Technical Analysis: OBV')
-        if df_obv is not None and len(df_obv) > 0:
-            indicadores['OBV'] = df_obv.iloc[-1].get('OBV', 'N/D')
-    
-    # Monta resposta
-    resposta = {
-        'ticker': ticker_clean,
-        'historico_grafico': historico_grafico,
-        'indicadores_alpha_vantage': indicadores,
-        'quote_alpha_vantage': quote_av if quote_av else None
-    }
-    
-    # Adiciona dados do Yahoo Finance se disponíveis
-    if dados_yfinance and dados_yfinance.get('info'):
-        resposta['dados_yfinance'] = formatar_dados_para_web(
-            dados_yfinance['info'],
-            dados_yfinance['historico'],
-            vista_analyzer,
-            request.args.get('periodo', '1y')
-        )
-    
-    return jsonify(resposta)
+@app.route('/api/pesquisa/<string:termo>')
+def pesquisar_ativo_api(termo):
+    if not termo: return jsonify({'erro': 'Termo de busca vazio'}), 400
+
+    tickers_encontrados = vista_analyzer.pesquisar_ativo(termo)
+    if not tickers_encontrados:
+        return jsonify({'erro': 'Ativo não encontrado'}), 404
+
+    if len(tickers_encontrados) > 1:
+        # Retorna uma lista de opções para o front-end escolher
+        opcoes = []
+        for t in tickers_encontrados:
+            info = vista_analyzer.buscar_dados_ativo(t)
+            if info and info.get('info'):
+                opcoes.append({
+                    'ticker': t.replace(".SA", ""),
+                    'nome': info['info'].get('shortName') or info['info'].get('longName') or t.replace(".SA", ""),
+                    'tipo': vista_analyzer.traducoes.get(info['info'].get('quoteType'))
+                })
+        return jsonify({'tipo': 'lista_opcoes', 'dados': opcoes})
+    else:
+        # Retorna os dados completos do ativo
+        ticker_final = tickers_encontrados[0]
+        periodo = request.args.get('periodo', '1y')
+        dados_completos = vista_analyzer.buscar_dados_ativo(ticker_final)
+        if dados_completos:
+            info = dados_completos['info']
+            historico = dados_completos['historico']
+            
+            formatted_data = formatar_dados_para_web(info, historico, vista_analyzer, periodo)
+            return jsonify({'tipo': 'dados_completos', 'dados': formatted_data})
+        else:
+            return jsonify({'erro': 'Não foi possível obter dados para o ativo'}), 404
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
