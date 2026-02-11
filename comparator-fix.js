@@ -250,4 +250,3 @@ function renderizarPaginaAtivo(ativo) {
         setTimeout(() => inicializarGrafico(ativo.historico_grafico, '1y', 'priceChart'), 100);
     }
 }
-
