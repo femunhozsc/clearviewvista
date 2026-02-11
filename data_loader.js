@@ -1,4 +1,3 @@
-// Dados dos ativos carregados dos arquivos CSV
 const ACOES_B3_DATA = [
     { ticker: "COGN3", nome: "Cogna", tipo: "EQUITY" },
     { ticker: "ENEV3", nome: "Eneva", tipo: "EQUITY" },
@@ -97,6 +96,9 @@ const ACOES_B3_DATA = [
     { ticker: "AZEV4", nome: "Azevedo & Travassos", tipo: "EQUITY" },
     { ticker: "GGPS3", nome: "GPS", tipo: "EQUITY" },
     { ticker: "SANB11", nome: "Banco Santander", tipo: "EQUITY" },
+<<<<<<< HEAD
+    { ticker: "TAEE11", nome: "Taesa", tipo: "EQUITY" },
+=======
     { ticker: "TAEE11", nome: "Taesa", tipo: "EQUITY" },
     { ticker: "YDUQ3", nome: "YDUQS", tipo: "EQUITY" },
     { ticker: "HBSA3", nome: "Hidrovias do Brasil", tipo: "EQUITY" },
@@ -567,3 +569,146 @@ window.DADOS_ATIVOS = {
     buscarSugestoes
 };
 
+
+
+
+document.addEventListener('DOMContentLoaded', (event) => {
+    const container = document.getElementById('ativos-populares-container');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    let scrollAmount = 0;
+
+    if (container && prevBtn && nextBtn) {
+        const cardWidth = container.querySelector('div').offsetWidth;
+        const scrollStep = cardWidth * 2; // Rola 2 cards por vez
+
+        nextBtn.addEventListener('click', () => {
+            container.scrollBy({ left: scrollStep, behavior: 'smooth' });
+        });
+
+        prevBtn.addEventListener('click', () => {
+            container.scrollBy({ left: -scrollStep, behavior: 'smooth' });
+        });
+
+        container.addEventListener('scroll', () => {
+            scrollAmount = container.scrollLeft;
+            const maxScroll = container.scrollWidth - container.clientWidth;
+
+            if (scrollAmount > 0) {
+                prevBtn.style.display = 'block';
+            } else {
+                prevBtn.style.display = 'none';
+            }
+
+            if (scrollAmount < maxScroll) {
+                nextBtn.style.display = 'block';
+            } else {
+                nextBtn.style.display = 'none';
+            }
+        });
+    }
+});
+
+
+
+
+document.addEventListener('DOMContentLoaded', (event) => {
+    const container = document.getElementById('ativos-populares-container');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    let scrollAmount = 0;
+
+    if (container && prevBtn && nextBtn) {
+        // Calculate card width dynamically, assuming all cards have the same width
+        const firstCard = container.querySelector('div');
+        const cardWidth = firstCard ? firstCard.offsetWidth + 24 : 300; // 24px for space-x-6 (1.5rem * 16px/rem)
+
+        const scrollStep = cardWidth * 2; // Scroll 2 cards at a time
+
+        nextBtn.addEventListener('click', () => {
+            container.scrollBy({ left: scrollStep, behavior: 'smooth' });
+        });
+
+        prevBtn.addEventListener('click', () => {
+            container.scrollBy({ left: -scrollStep, behavior: 'smooth' });
+        });
+
+        // Initial check for button visibility
+        setTimeout(() => {
+            const maxScroll = container.scrollWidth - container.clientWidth;
+            if (maxScroll <= 0) {
+                nextBtn.style.display = 'none';
+            } else {
+                nextBtn.style.display = 'block';
+            }
+            prevBtn.style.display = 'none'; // Always start with prev hidden
+        }, 500); // Small delay to ensure content is rendered
+
+        container.addEventListener('scroll', () => {
+            scrollAmount = container.scrollLeft;
+            const maxScroll = container.scrollWidth - container.clientWidth;
+
+            if (scrollAmount > 0) {
+                prevBtn.style.display = 'block';
+            } else {
+                prevBtn.style.display = 'none';
+            }
+
+            if (scrollAmount < maxScroll - 1) { // -1 to account for potential sub-pixel rendering differences
+                nextBtn.style.display = 'block';
+            } else {
+                nextBtn.style.display = 'none';
+            }
+        });
+    }
+});
+
+
+
+document.addEventListener("DOMContentLoaded", carregarDadosPaginaInicial);
+
+
+
+
+// Lógica do carrossel para ativos populares
+let scrollPosition = 0;
+const cardWidth = 200; // Largura estimada de cada card + gap
+
+function setupCarousel() {
+    const container = document.getElementById('ativos-populares-container');
+    const prevBtn = document.getElementById('carousel-prev-btn');
+    const nextBtn = document.getElementById('carousel-next-btn');
+
+    if (!container || !prevBtn || !nextBtn) return;
+
+    function updateButtonVisibility() {
+        prevBtn.style.display = scrollPosition > 0 ? 'block' : 'none';
+        nextBtn.style.display = (container.scrollWidth - container.scrollLeft > container.clientWidth) ? 'block' : 'none';
+    }
+
+    nextBtn.addEventListener('click', () => {
+        container.scrollBy({ left: cardWidth * 3, behavior: 'smooth' });
+    });
+
+    prevBtn.addEventListener('click', () => {
+        container.scrollBy({ left: -cardWidth * 3, behavior: 'smooth' });
+    });
+
+    container.addEventListener('scroll', () => {
+        scrollPosition = container.scrollLeft;
+        updateButtonVisibility();
+    });
+
+    // Initial check
+    setTimeout(updateButtonVisibility, 500);
+    window.addEventListener('resize', updateButtonVisibility);
+}
+
+// Chamar setupCarousel após o carregamento dos dados da página inicial
+// Isso deve ser feito após a renderização do HTML dos ativos populares
+const originalRenderizarPaginaInicial = renderizarPaginaInicial;
+renderizarPaginaInicial = async (event) => {
+    await originalRenderizarPaginaInicial(event);
+    setupCarousel();
+};
+>>>>>>> c8b84310f921de61bff928e98add5a583dea4e0c
