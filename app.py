@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 import math
+=======
+>>>>>>> parent of a3642fd (Merge branch 'main' of https://github.com/femunhozsc/clearviewvista)
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import pandas as pd
@@ -77,6 +80,7 @@ def formatar_dados_para_web(info, historico, vista_instance, periodo_req='1y'):
             ]},
             {'titulo': 'Indicadores de Endividamento', 'indicadores': [
                 {'label': 'Liquidez Corrente', 'value': fv(info.get('currentRatio'))}, {'label': 'Dív. Bruta / Patrimônio', 'value': fv(info.get('debtToEquity'))},
+<<<<<<< HEAD
             ]},
             {'titulo': 'Indicadores de Eficiência', 'indicadores': [
                 {'label': 'Marg. Bruta', 'value': fv(info.get('grossMargins'), 'porcentagem')}, {'label': 'Marg. EBITDA', 'value': fv(info.get('ebitdaMargins'), 'porcentagem')},
@@ -305,3 +309,6 @@ def pesquisar_ativo_api(termo):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
+=======
+            ]},
+>>>>>>> parent of a3642fd (Merge branch 'main' of https://github.com/femunhozsc/clearviewvista)

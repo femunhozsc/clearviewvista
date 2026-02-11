@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 // Sistema de Roteamento para Clearview Vista
+=======
+>>>>>>> parent of a3642fd (Merge branch 'main' of https://github.com/femunhozsc/clearviewvista)
 class Router {
     constructor() {
         this.routes = {};
@@ -97,6 +100,7 @@ class Router {
         
         const params = {};
         queryString.split('&').forEach(param => {
+<<<<<<< HEAD
             const [key, value] = param.split('=');
             params[decodeURIComponent(key)] = decodeURIComponent(value || '');
         });
@@ -360,3 +364,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupRoutes();
 });
 
+=======
+            const [key, value] = param.split('=');
+>>>>>>> parent of a3642fd (Merge branch 'main' of https://github.com/femunhozsc/clearviewvista)

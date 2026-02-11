@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 // Dados dos ativos carregados dos arquivos CSV
+=======
+>>>>>>> parent of a3642fd (Merge branch 'main' of https://github.com/femunhozsc/clearviewvista)
 const ACOES_B3_DATA = [
     { ticker: "COGN3", nome: "Cogna", tipo: "EQUITY" },
     { ticker: "ENEV3", nome: "Eneva", tipo: "EQUITY" },
@@ -97,6 +100,7 @@ const ACOES_B3_DATA = [
     { ticker: "AZEV4", nome: "Azevedo & Travassos", tipo: "EQUITY" },
     { ticker: "GGPS3", nome: "GPS", tipo: "EQUITY" },
     { ticker: "SANB11", nome: "Banco Santander", tipo: "EQUITY" },
+<<<<<<< HEAD
     { ticker: "TAEE11", nome: "Taesa", tipo: "EQUITY" },
     { ticker: "YDUQ3", nome: "YDUQS", tipo: "EQUITY" },
     { ticker: "HBSA3", nome: "Hidrovias do Brasil", tipo: "EQUITY" },
@@ -710,3 +714,6 @@ renderizarPaginaInicial = async (event) => {
     setupCarousel();
 };
 
+=======
+    { ticker: "TAEE11", nome: "Taesa", tipo: "EQUITY" },
+>>>>>>> parent of a3642fd (Merge branch 'main' of https://github.com/femunhozsc/clearviewvista)

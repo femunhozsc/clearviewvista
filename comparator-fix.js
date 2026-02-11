@@ -401,5 +401,76 @@ def pesquisar_ativo_api(termo):
         else:
             return jsonify({'erro': 'Não foi possível obter dados para o ativo'}), 404
 
+<<<<<<< HEAD
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
+=======
+// Função melhorada para renderizar página de ativo
+function renderizarPaginaAtivo(ativo) {
+    currentTicker = ativo.ticker;
+    const corVariacao = ativo.eh_positivo ? 'text-green-400' : 'text-red-400';
+    const sinalVariacao = ativo.eh_positivo ? '+' : '';
+
+    let secoesHTML = '';
+    if(ativo.secoes && ativo.secoes.length > 0) {
+        secoesHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+            <div class="space-y-6">
+                <div>
+                    <h4 class="text-lg font-bold text-amber-400 mb-2">${(ativo.secoes[0] || { titulo: 'Valuation' }).titulo}</h4>
+                    ${(ativo.secoes[0] || { indicadores: [] }).indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
+                </div>
+                ${ativo.secoes[2] ? `
+                <div>
+                    <h4 class="text-lg font-bold text-amber-400 mb-2">${ativo.secoes[2].titulo}</h4>
+                    ${ativo.secoes[2].indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
+                </div>
+                ` : ''}
+            </div>
+            <div class="space-y-6">
+                ${ativo.secoes[1] ? `
+                <div>
+                    <h4 class="text-lg font-bold text-amber-400 mb-2">${ativo.secoes[1].titulo}</h4>
+                    ${ativo.secoes[1].indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
+                </div>
+                ` : ''}
+                ${ativo.secoes[3] ? `
+                <div>
+                    <h4 class="text-lg font-bold text-amber-400 mb-2">${ativo.secoes[3].titulo}</h4>
+                    ${ativo.secoes[3].indicadores.map(item => `<div class="flex justify-between py-2 border-b border-zinc-800 text-sm"><span class="text-gray-400">${item.label}</span><span class="font-medium text-white">${item.value}</span></div>`).join('')}
+                </div>
+                ` : ''}
+            </div>
+        </div>
+        `;
+    }
+
+    mainContainer.innerHTML = `
+        <div class="fade-in-up">
+            <div class="card-background p-4 md:p-6 mb-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                    <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                        ${getLogoHTML(ativo.ticker, ativo.quoteType, 'w-12 h-12 md:w-16 md:h-16', 'rounded-xl')}
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-bold text-white">${ativo.ticker}</h1>
+                            <p class="text-gray-400 text-sm md:text-base">${ativo.nome}</p>
+                            <p class="text-gray-500 text-xs md:text-sm">${ativo.tipo_ativo}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl md:text-3xl font-bold text-white">${ativo.preco_atual}</p>
+                        <p class="text-lg md:text-xl font-semibold ${corVariacao}">${sinalVariacao}${ativo.variacao_dia_abs} (${ativo.variacao_dia_pct})</p>
+                    </div>
+                </div>
+                ${secoesHTML}
+            </div>
+            ${criarLayoutGraficoResponsivo('Histórico de Preços', 'priceChart')}
+        </div>
+    `;
+
+    if (ativo.historico_grafico) {
+        setTimeout(() => inicializarGrafico(ativo.historico_grafico, '1y', 'priceChart'), 100);
+    }
+}
+
+>>>>>>> parent of a3642fd (Merge branch 'main' of https://github.com/femunhozsc/clearviewvista)
